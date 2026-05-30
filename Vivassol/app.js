@@ -120,19 +120,57 @@
     });
   }
 
-  function applyProjectConfig() {
+  function applyProjectConfig(options = {}) {
     const externalConfig = window.VIVASSOL_CONFIG && typeof window.VIVASSOL_CONFIG === "object" ? window.VIVASSOL_CONFIG : {};
-    const config = { ...PROJECT_CONFIG, ...externalConfig };
+    const config = normalizeConfig({ ...PROJECT_CONFIG, ...externalConfig });
     const keys = ["apiUrl", "apiToken", "spreadsheetId", "spreadsheetUrl", "backupSpreadsheetUrl"];
     let changed = false;
     keys.forEach((key) => {
       const value = String(config[key] || "").trim();
-      if (value && state.db.configuracoes[key] !== value) {
+      if (value && (options.force || shouldUseProjectConfig(key, state.db.configuracoes[key]))) {
         state.db.configuracoes[key] = value;
         changed = true;
       }
     });
     if (changed) saveDatabase({ skipRemotePush: true });
+  }
+
+  function normalizeConfig(config) {
+    return {
+      ...config,
+      apiUrl: normalizeApiUrl(config.apiUrl),
+      spreadsheetUrl: normalizeSpreadsheetUrl(config.spreadsheetUrl),
+      backupSpreadsheetUrl: normalizeSpreadsheetUrl(config.backupSpreadsheetUrl),
+    };
+  }
+
+  function shouldUseProjectConfig(key, currentValue) {
+    const value = String(currentValue || "").trim();
+    if (!value) return true;
+    if (key === "apiUrl") return !isUsableApiUrl(value);
+    if (key === "apiToken") return value.length < 30;
+    if (key === "spreadsheetId") return value === "1L1bTgw6tnfGFV42SjsRBx_BeMAr-ooKjbJcGXYDGeFA" || value.length < 25;
+    if (key === "spreadsheetUrl" || key === "backupSpreadsheetUrl") return value.includes("1L1bTgw6tnfGFV42SjsRBx_BeMAr-ooKjbJcGXYDGeFA");
+    return false;
+  }
+
+  function isUsableApiUrl(value) {
+    return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/i.test(String(value || "").trim());
+  }
+
+  function normalizeApiUrl(value) {
+    let url = String(value || "").trim();
+    if (!url) return "";
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    const match = url.match(/^(https:\/\/script\.google\.com\/macros\/s\/[^/?#]+)(?:\/(?:exec|dev))?/i);
+    return match ? `${match[1]}/exec` : url;
+  }
+
+  function normalizeSpreadsheetUrl(value) {
+    const url = String(value || "").trim();
+    if (!url) return "";
+    const match = url.match(/^(https:\/\/docs\.google\.com\/spreadsheets\/d\/[^/?#]+)/i);
+    return match ? `${match[1]}/edit` : url;
   }
 
   async function handleLogin(event) {
@@ -356,6 +394,14 @@
 
     if (button.dataset.syncPush) {
       confirmSyncPush();
+      return;
+    }
+
+    if (button.dataset.resetProjectConfig) {
+      applyProjectConfig({ force: true });
+      toast("Conexao padrao restaurada.");
+      renderCurrentView();
+      syncPull({ keepView: true });
     }
   }
 
@@ -1060,8 +1106,9 @@
           ${input("backupSpreadsheetUrl", "Link da planilha espelho", state.db.configuracoes.backupSpreadsheetUrl || "", "url")}
           <button class="primary-button" type="submit"><span class="btn-icon">.</span>Salvar configuracoes</button>
           <div class="button-row">
-            <button class="secondary-button" type="button" data-sync-push="1">Enviar dados locais para planilha</button>
             <button class="ghost-button" type="button" data-sync-pull="1">Puxar dados da planilha</button>
+            <button class="ghost-button" type="button" data-reset-project-config="1">Restaurar conexao padrao</button>
+            <button class="secondary-button" type="button" data-sync-push="1">Enviar dados locais para planilha</button>
             ${state.db.configuracoes.spreadsheetUrl ? `<a class="ghost-button" href="${escapeHTML(state.db.configuracoes.spreadsheetUrl)}" target="_blank" rel="noreferrer">Abrir principal</a>` : ""}
             ${state.db.configuracoes.backupSpreadsheetUrl ? `<a class="ghost-button" href="${escapeHTML(state.db.configuracoes.backupSpreadsheetUrl)}" target="_blank" rel="noreferrer">Abrir espelho</a>` : ""}
           </div>
@@ -1381,11 +1428,11 @@
   }
 
   async function saveConfiguracoes(data) {
-    state.db.configuracoes.apiUrl = data.apiUrl.trim();
+    state.db.configuracoes.apiUrl = normalizeApiUrl(data.apiUrl);
     state.db.configuracoes.apiToken = data.apiToken.trim();
     state.db.configuracoes.spreadsheetId = data.spreadsheetId.trim();
-    state.db.configuracoes.spreadsheetUrl = data.spreadsheetUrl.trim();
-    state.db.configuracoes.backupSpreadsheetUrl = data.backupSpreadsheetUrl.trim();
+    state.db.configuracoes.spreadsheetUrl = normalizeSpreadsheetUrl(data.spreadsheetUrl);
+    state.db.configuracoes.backupSpreadsheetUrl = normalizeSpreadsheetUrl(data.backupSpreadsheetUrl);
     state.db.configuracoes.updatedAt = new Date().toISOString();
     saveDatabase({ skipRemotePush: true });
     toast("Configuracoes salvas.");
@@ -1501,10 +1548,18 @@
     const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(url, { ...options, signal: controller.signal });
-      const payload = await response.json();
+      const text = await response.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        const preview = text.replace(/\s+/g, " ").slice(0, 120);
+        throw new Error(`Resposta invalida do Apps Script (${response.status}). Confira se a URL publicada termina com /exec. ${preview}`);
+      }
       return { response, payload };
     } catch (error) {
       if (error.name === "AbortError") throw new Error("Tempo limite ao conversar com o banco de dados.");
+      if (error instanceof TypeError) throw new Error("O navegador nao conseguiu acessar o Apps Script. Confira a implantacao como aplicativo da Web e o acesso para qualquer pessoa com o link.");
       throw error;
     } finally {
       window.clearTimeout(timeout);
@@ -1540,13 +1595,13 @@
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: "replaceAll", token: state.db.configuracoes.apiToken, payload: state.db }),
-      }, 20000);
+      }, 45000);
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha ao salvar na planilha.");
       updateDatabaseStatus("online");
       if (!silent) toast("Dados enviados para a planilha.");
     } catch (error) {
-      updateDatabaseStatus("offline");
-      if (!silent) toast("Nao foi possivel enviar para a planilha.", "danger");
+      updateDatabaseStatus("offline", error.message || "Banco de dados desconectado");
+      if (!silent) toast(error.message || "Nao foi possivel enviar para a planilha.", "danger");
       console.error(error);
     } finally {
       state.sync.pushing = false;
@@ -1575,7 +1630,7 @@
     state.sync.pulling = true;
     try {
       if (!background) updateDatabaseStatus("checking", silent ? "Atualizando dados do banco..." : "Puxando do banco...");
-      const { response, payload } = await fetchJSONWithTimeout(`${url}?action=readAll&token=${encodeURIComponent(state.db.configuracoes.apiToken)}`, {}, 20000);
+      const { response, payload } = await fetchJSONWithTimeout(`${url}?action=readAll&token=${encodeURIComponent(state.db.configuracoes.apiToken)}`, {}, 60000);
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha");
       state.sync.applyingRemote = true;
       state.db = { ...state.db, ...normalizeRemoteDatabase(payload.data), configuracoes: state.db.configuracoes };
@@ -1589,8 +1644,8 @@
       else renderApp();
     } catch (error) {
       state.sync.applyingRemote = false;
-      updateDatabaseStatus("offline");
-      if (!silent) toast("Nao foi possivel puxar a planilha.", "danger");
+      updateDatabaseStatus("offline", error.message || "Banco de dados desconectado");
+      if (!silent) toast(error.message || "Nao foi possivel puxar a planilha.", "danger");
       console.error(error);
     } finally {
       state.sync.pulling = false;
