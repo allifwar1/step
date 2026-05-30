@@ -507,6 +507,19 @@ td {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.phone-field {
+  grid-template-columns: minmax(72px, 62px) minmax(0, 1fr);
+  align-items: end;
+}
+
+.phone-field select {
+  min-width: 0;
+}
+
+.phone-field input {
+  min-width: 0;
+}
+
 .button-row {
   display: flex;
   align-items: center;
@@ -897,6 +910,10 @@ td {
   .three-col,
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .phone-field {
+    grid-template-columns: minmax(68px, 82px) minmax(0, 1fr);
   }
 
   .table-panel {

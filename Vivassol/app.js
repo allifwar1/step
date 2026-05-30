@@ -11,7 +11,7 @@
   };
 
   const PROJECT_CONFIG = {
-    apiUrl: "https://script.google.com/macros/s/AKfycbx6cpndslxNfjCZon9mNj5iJSyjbRtcVQpj7wUefTt8HGTs-u7B9EdtRhNt3JO-LoU/exec",
+    apiUrl: "https://script.google.com/macros/s/AKfycbx6cpndslxNfjCZon9mNjj5iJSyjbRtcvQpj7wUefTt8HGTs-u7B9EdtRhNt3JO-LoU/exec",
     apiToken: "viva_d7d6e4bd30c27d36b3c77a8781d9879da9bf8792cede9bf3",
     spreadsheetId: "1NpGoMj03JFo5dCQ8Wk1LnwG6ZbegyXdN2DVjwS1EoMg",
     spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1NpGoMj03JFo5dCQ8Wk1LnwG6ZbegyXdN2DVjwS1EoMg/edit",
@@ -21,20 +21,20 @@
   const MODULES = [
     { id: "dashboard", label: "Dashboard", title: "Painel inicial", icon: "▦" },
     { id: "vendas", label: "Vendas", title: "Vendas e nova venda", icon: "$" },
-    { id: "clientes", label: "Clientes", title: "Clientes", icon: "@" },
-    { id: "produtos", label: "Produtos", title: "Produtos finais", icon: "#" },
-    { id: "insumos", label: "Insumos", title: "Insumos", icon: "+" },
-    { id: "ficha", label: "Ficha tecnica", title: "Ficha tecnica e precificador", icon: "%" },
-    { id: "estoque", label: "Estoque", title: "Estoque", icon: "=" },
-    { id: "producao", label: "Producao", title: "Producao personalizada", icon: ">" },
-    { id: "orcamentos", label: "Orcamentos", title: "Orcamentos", icon: "?" },
-    { id: "fornecedores", label: "Fornecedores", title: "Fornecedores e entradas", icon: "&" },
+    { id: "clientes", label: "Clientes", title: "Clientes", icon: "C" },
+    { id: "produtos", label: "Produtos", title: "Produtos finais", icon: "P" },
+    { id: "insumos", label: "Insumos", title: "Insumos", icon: "I" },
+    { id: "ficha", label: "Ficha tecnica", title: "Ficha tecnica e precificador", icon: "FT" },
+    { id: "estoque", label: "Estoque", title: "Estoque", icon: "E" },
+    { id: "producao", label: "Producao", title: "Producao personalizada", icon: "PR" },
+    { id: "orcamentos", label: "Orcamentos", title: "Orcamentos", icon: "O" },
+    { id: "fornecedores", label: "Fornecedores", title: "Fornecedores e entradas", icon: "F" },
     { id: "financeiro", label: "Financeiro", title: "Financeiro", icon: "R" },
-    { id: "relatorios", label: "Relatorios", title: "Relatorios", icon: "*" },
-    { id: "integracoes", label: "Integracoes", title: "Integracoes futuras", icon: "~" },
+    { id: "relatorios", label: "Relatorios", title: "Relatorios", icon: "RL" },
+    { id: "integracoes", label: "Integracoes", title: "Integracoes futuras", icon: "IN" },
     { id: "agentes", label: "Agentes IA", title: "Agentes de IA futuros", icon: "IA" },
     { id: "usuarios", label: "Usuarios", title: "Usuarios e permissoes", icon: "U", adminOnly: true },
-    { id: "configuracoes", label: "Configuracoes", title: "Configuracoes", icon: "." },
+    { id: "configuracoes", label: "Configuracoes", title: "Configuracoes", icon: "CG" },
   ];
 
   const CORE_MOBILE = ["dashboard", "vendas", "clientes", "estoque", "financeiro"];
@@ -277,7 +277,9 @@
   function canAccess(moduleId) {
     const module = MODULES.find((item) => item.id === moduleId);
     if (!module || !state.currentUser) return false;
-    if (module.adminOnly && state.currentUser.usuario !== "allif") return false;
+    const isAdmin = state.currentUser.usuario === "allif" || normalize(state.currentUser.perfil) === "administrador";
+    if (isAdmin) return true;
+    if (module.adminOnly) return false;
     const permissions = normalizePermissions(state.currentUser.permissoes);
     return permissions.includes(moduleId);
   }
@@ -311,7 +313,13 @@
     if (field.matches("[data-filter]")) {
       state.filters[field.dataset.filter] = field.value;
       renderCurrentView({ preserveFocus: true });
+      return;
     }
+    if (field.name === "telefone") {
+      const masked = formatPhoneLocal(field.value);
+      if (field.value !== masked) field.value = masked;
+    }
+    markFormDirty(field);
     if (field.matches("[data-price-live]")) {
       updateFichaPreview();
     }
@@ -353,6 +361,7 @@
 
   function handleContentChange(event) {
     const field = event.target;
+    if (field.name === "telefone_pais" || field.name === "telefone") markFormDirty(field);
     if (field.matches("[data-price-live]")) updateFichaPreview();
   }
 
@@ -436,8 +445,13 @@
 
   function renderDashboard() {
     const today = dateISO();
-    const localToday = state.db.vendas.filter((venda) => venda.data.startsWith(today) && venda.tipo === "Local");
-    const ecommerceToday = state.db.vendas.filter((venda) => venda.data.startsWith(today) && venda.tipo === "Ecommerce");
+    const vendas = asArray(state.db.vendas, []);
+    const financeiro = asArray(state.db.financeiro, []);
+    const orcamentos = asArray(state.db.orcamentos, []);
+    const movimentacoes = asArray(state.db.movimentacoesEstoque, []);
+    const producao = asArray(state.db.producao, []);
+    const localToday = vendas.filter((venda) => safeStartsWith(venda.data, today) && venda.tipo === "Local");
+    const ecommerceToday = vendas.filter((venda) => safeStartsWith(venda.data, today) && venda.tipo === "Ecommerce");
     const stockValue = stockTotalValue();
     const stockQty = stockTotalQty();
     const lowStock = lowStockItems().slice(0, 5);
@@ -488,10 +502,10 @@
               </div>
             </div>
             ${summaryList([
-              ["Orcamentos aguardando", state.db.orcamentos.filter((item) => item.status === "Aguardando cliente").length],
-              ["Contas a receber", money(sum(state.db.financeiro.filter((item) => item.status === "Pendente" && item.tipo === "Entrada"), "valor"))],
-              ["Pedidos proximos do prazo", dueProductionCount()],
-              ["Movimentacoes de estoque hoje", state.db.movimentacoesEstoque.filter((item) => item.data.startsWith(today)).length],
+              ["Orcamentos aguardando", orcamentos.filter((item) => item.status === "Aguardando cliente").length],
+              ["Contas a receber", money(sum(financeiro.filter((item) => item.status === "Pendente" && item.tipo === "Entrada"), "valor"))],
+              ["Pedidos proximos do prazo", dueProductionCount(producao)],
+              ["Movimentacoes de estoque hoje", movimentacoes.filter((item) => safeStartsWith(item.data, today)).length],
             ])}
           </section>
         </div>
@@ -504,7 +518,8 @@
     const query = normalize(state.filters.clientes || "");
     const rows = state.db.clientes
       .filter((item) => [item.codigo, item.nome, item.telefone, item.origem].some((value) => normalize(value).includes(query)))
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      .sort((a, b) => compareText(a.nome, b.nome));
+    const parsedPhone = splitPhoneValue(editing?.telefone || "");
 
     return `
       <section class="two-col">
@@ -517,11 +532,11 @@
           </div>
           ${editing ? `<input type="hidden" name="id" value="${escapeHTML(editing.id)}">` : ""}
           <div class="field-row">
-            ${input("codigo", "Codigo", editing?.codigo || nextCode("clientes"), "text", true)}
+            ${input("codigo", "Codigo", editing?.codigo || nextCode("clientes"), "text", true, "", 'readonly aria-readonly="true"')}
             ${input("nome", "Nome", editing?.nome || "", "text", true)}
           </div>
           <div class="field-row">
-            ${input("telefone", "Telefone/WhatsApp", editing?.telefone || "")}
+            ${phoneField(parsedPhone)}
             ${input("aniversario", "Aniversario", editing?.aniversario || "", "date")}
           </div>
           ${input("endereco", "Endereco", editing?.endereco || "")}
@@ -561,7 +576,7 @@
 
   function renderProdutos() {
     const editing = getEditing("produtosFinais");
-    const rows = state.db.produtosFinais.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    const rows = state.db.produtosFinais.slice().sort((a, b) => compareText(a.nome, b.nome));
     return `
       <section class="two-col">
         <form class="form-panel form-grid" data-action="produto">
@@ -605,7 +620,7 @@
 
   function renderInsumos() {
     const editing = getEditing("insumos");
-    const rows = state.db.insumos.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    const rows = state.db.insumos.slice().sort((a, b) => compareText(a.nome, b.nome));
     return `
       <section class="two-col">
         <form class="form-panel form-grid" data-action="insumo">
@@ -716,14 +731,14 @@
   }
 
   function renderEstoque() {
-    const rows = state.db.movimentacoesEstoque.slice().sort((a, b) => b.data.localeCompare(a.data)).slice(0, 30);
+    const rows = state.db.movimentacoesEstoque.slice().sort((a, b) => compareDateDesc(a.data, b.data)).slice(0, 30);
     return `
       <section class="view-grid">
         <div class="kpi-grid">
           ${kpi("Valor dos insumos", money(sum(state.db.insumos.map((item) => ({ total: num(item.quantidade) * num(item.custo_unitario) })), "total")), "materia-prima")}
           ${kpi("Quantidade em insumos", formatQty(sum(state.db.insumos, "quantidade")), "unidades medidas")}
           ${kpi("Itens abaixo do minimo", lowStockItems().length, "precisam de atencao")}
-          ${kpi("Movimentos hoje", state.db.movimentacoesEstoque.filter((item) => item.data.startsWith(dateISO())).length, "entradas e saidas")}
+          ${kpi("Movimentos hoje", state.db.movimentacoesEstoque.filter((item) => safeStartsWith(item.data, dateISO())).length, "entradas e saidas")}
         </div>
         <section class="two-col">
           <form class="form-panel form-grid" data-action="movimento">
@@ -734,7 +749,7 @@
               </div>
             </div>
             ${select("item_tipo", "Tipo", ["Insumo", "Produto final"], "Insumo")}
-            ${selectFrom("item_id", "Item", [...state.db.insumos, ...state.db.produtosFinais], "")}
+            ${selectFrom("item_id", "Item", [...state.db.insumos, ...state.db.produtosFinais], "", "Selecione um item")}
             <div class="field-row">
               ${select("tipo", "Movimento", ["Entrada", "Saida", "Ajuste"], "Entrada")}
               ${input("quantidade", "Quantidade", "", "number", true, "0.0001")}
@@ -768,7 +783,7 @@
   }
 
   function renderVendas() {
-    const rows = state.db.vendas.slice().sort((a, b) => b.data.localeCompare(a.data));
+    const rows = state.db.vendas.slice().sort((a, b) => compareDateDesc(a.data, b.data));
     return `
       <section class="view-grid">
         <form class="form-panel form-grid" data-action="venda">
@@ -779,12 +794,12 @@
             </div>
           </div>
           <div class="field-row three">
-            ${selectFrom("cliente_id", "Cliente", state.db.clientes, state.db.clientes.find((item) => item.codigo === "01")?.id || "", "", "", "nome")}
+            ${selectFrom("cliente_id", "Cliente", state.db.clientes, "", "Selecione um cliente", "", "nome")}
             ${select("tipo", "Tipo", ["Local", "Ecommerce"], "Local")}
             ${select("canal", "Canal", SALE_CHANNELS, "Loja local")}
           </div>
           <div class="field-row three">
-            ${selectFrom("produto_id", "Produto", state.db.produtosFinais, "")}
+            ${selectFrom("produto_id", "Produto", state.db.produtosFinais, "", "Selecione um produto")}
             ${input("quantidade", "Quantidade", "1", "number", true, "1")}
             ${input("preco_unitario", "Preco unitario", "", "number", false, "0.01")}
           </div>
@@ -848,7 +863,7 @@
   }
 
   function renderOrcamentos() {
-    const rows = state.db.orcamentos.slice().sort((a, b) => b.data.localeCompare(a.data));
+    const rows = state.db.orcamentos.slice().sort((a, b) => compareDateDesc(a.data, b.data));
     return `
       <section class="view-grid">
         <form class="form-panel form-grid" data-action="orcamento">
@@ -989,7 +1004,7 @@
         </section>
         ${tablePanel(
           ["Data", "Tipo", "Descricao", "Categoria", "Valor", "Status"],
-          state.db.financeiro.slice().sort((a, b) => b.data.localeCompare(a.data)).map((item) => [
+          state.db.financeiro.slice().sort((a, b) => compareDateDesc(a.data, b.data)).map((item) => [
             dateBR(item.data),
             item.tipo,
             item.descricao,
@@ -1117,7 +1132,7 @@
           <div class="panel-header">
             <div>
               <h3>Estado atual</h3>
-              <p>Primeira versao pronta para testar localmente.</p>
+              <p>Conexao e dados atuais do sistema.</p>
             </div>
           </div>
           ${summaryList([
@@ -1133,18 +1148,24 @@
   }
 
   function saveCliente(data) {
+    const existing = data.id ? findById("clientes", data.id) : null;
+    const telefone = buildPhoneValue(data.telefone_pais, data.telefone);
+    if (data.telefone.trim() && !telefone) {
+      toast("Telefone invalido. Use DDD e 8 ou 9 digitos.", "warn");
+      return;
+    }
     const record = {
       id: data.id || makeId("cli"),
-      codigo: data.codigo || nextCode("clientes"),
+      codigo: existing?.codigo || data.codigo || nextCode("clientes"),
       nome: data.nome.trim(),
-      telefone: data.telefone.trim(),
+      telefone,
       endereco: data.endereco.trim(),
       origem: data.origem.trim(),
       preferencias: data.preferencias.trim(),
       observacoes: data.observacoes.trim(),
       aniversario: data.aniversario,
       status: data.status,
-      criado_em: data.id ? findById("clientes", data.id)?.criado_em : new Date().toISOString(),
+      criado_em: existing?.criado_em || new Date().toISOString(),
       atualizado_em: new Date().toISOString(),
     };
     upsert("clientes", record);
@@ -1660,9 +1681,17 @@
 
   function hasActiveFormInput() {
     if (el.modalRoot.innerHTML.trim()) return true;
+    const currentForm = el.content.querySelector("form");
+    if (currentForm && (currentForm.dataset.dirty === "true" || state.editing[state.view])) return true;
     const active = document.activeElement;
     if (!active || !el.content.contains(active) || active.matches("[data-filter]")) return false;
     return Boolean(active.closest("form"));
+  }
+
+  function markFormDirty(field) {
+    const form = field.closest("form");
+    if (!form) return;
+    form.dataset.dirty = "true";
   }
 
   function queueRemotePush() {
@@ -1743,28 +1772,28 @@
     const itensVenda = asArray(data.Itens_Venda || data.itensVenda, state.db.itensVenda).map(normalizeRemoteSaleItem);
     return {
       usuarios: asArray(data.Usuarios || data.usuarios, state.db.usuarios).map(normalizeRemoteUser),
-      clientes: asArray(data.Clientes || data.clientes, state.db.clientes),
-      fornecedores: asArray(data.Fornecedores || data.fornecedores, state.db.fornecedores),
-      insumos: asArray(data.Insumos || data.insumos, state.db.insumos),
+      clientes: asArray(data.Clientes || data.clientes, state.db.clientes).map(normalizeRemoteClient),
+      fornecedores: asArray(data.Fornecedores || data.fornecedores, state.db.fornecedores).map(normalizeRemoteSupplier),
+      insumos: asArray(data.Insumos || data.insumos, state.db.insumos).map(normalizeRemoteSupply),
       produtosFinais: produtos,
-      fichaTecnica: asArray(data.Ficha_Tecnica || data.fichaTecnica, state.db.fichaTecnica),
+      fichaTecnica: asArray(data.Ficha_Tecnica || data.fichaTecnica, state.db.fichaTecnica).map(normalizeRemoteRecipeItem),
       vendas,
       itensVenda,
-      personalizacoes: asArray(data.Personalizacoes || data.personalizacoes, state.db.personalizacoes),
-      producao: asArray(data.Producao || data.producao, state.db.producao),
-      orcamentos: asArray(data.Orcamentos || data.orcamentos, state.db.orcamentos),
-      entradasFornecedor: asArray(data.Entradas_Fornecedor || data.entradasFornecedor, state.db.entradasFornecedor),
-      movimentacoesEstoque: asArray(data.Movimentacoes_Estoque || data.movimentacoesEstoque, state.db.movimentacoesEstoque),
-      financeiro: asArray(data.Financeiro || data.financeiro, state.db.financeiro),
-      pagamentos: asArray(data.Pagamentos || data.pagamentos, state.db.pagamentos || []),
-      logsSistema: asArray(data.Logs_Sistema || data.logsSistema, state.db.logsSistema),
-      logsAgentes: asArray(data.Logs_Agentes || data.logsAgentes, state.db.logsAgentes),
+      personalizacoes: asArray(data.Personalizacoes || data.personalizacoes, state.db.personalizacoes).map(normalizeRemoteCustomization),
+      producao: asArray(data.Producao || data.producao, state.db.producao).map(normalizeRemoteProduction),
+      orcamentos: asArray(data.Orcamentos || data.orcamentos, state.db.orcamentos).map(normalizeRemoteBudget),
+      entradasFornecedor: asArray(data.Entradas_Fornecedor || data.entradasFornecedor, state.db.entradasFornecedor).map(normalizeRemoteSupplierEntry),
+      movimentacoesEstoque: asArray(data.Movimentacoes_Estoque || data.movimentacoesEstoque, state.db.movimentacoesEstoque).map(normalizeRemoteStockMove),
+      financeiro: asArray(data.Financeiro || data.financeiro, state.db.financeiro).map(normalizeRemoteFinanceItem),
+      pagamentos: asArray(data.Pagamentos || data.pagamentos, state.db.pagamentos || []).map(normalizeRemotePayment),
+      logsSistema: asArray(data.Logs_Sistema || data.logsSistema, state.db.logsSistema).map(normalizeRemoteLog),
+      logsAgentes: asArray(data.Logs_Agentes || data.logsAgentes, state.db.logsAgentes).map(normalizeRemoteLog),
       aprovacoes: asArray(data.Aprovacoes || data.aprovacoes, state.db.aprovacoes),
       integracoes: asArray(data.Integracoes || data.integracoes, state.db.integracoes),
       agentes: asArray(data.Agentes || data.agentes, state.db.agentes),
-      backups: asArray(data.Backups || data.backups, state.db.backups || []),
-      healthCheck: asArray(data.Health_Check || data.healthCheck, state.db.healthCheck || []),
-      estoque: asArray(data.Estoque || data.estoque, state.db.estoque || []),
+      backups: asArray(data.Backups || data.backups, state.db.backups || []).map(normalizeRemoteBackup),
+      healthCheck: asArray(data.Health_Check || data.healthCheck, state.db.healthCheck || []).map(normalizeRemoteHealthCheck),
+      estoque: asArray(data.Estoque || data.estoque, state.db.estoque || []).map(normalizeRemoteStockItem),
     };
   }
 
@@ -1783,6 +1812,55 @@
     };
   }
 
+  function normalizeRemoteClient(client) {
+    return {
+      ...client,
+      codigo: stringValue(client.codigo),
+      nome: stringValue(client.nome),
+      telefone: stringValue(client.telefone),
+      origem: stringValue(client.origem),
+      endereco: stringValue(client.endereco),
+      preferencias: stringValue(client.preferencias),
+      observacoes: stringValue(client.observacoes),
+      aniversario: dateOnlyValue(client.aniversario),
+      criado_em: dateTimeValue(client.criado_em),
+      atualizado_em: dateTimeValue(client.atualizado_em),
+    };
+  }
+
+  function normalizeRemoteSupplier(item) {
+    return {
+      ...item,
+      nome: stringValue(item.nome),
+      documento: stringValue(item.documento),
+      telefone: stringValue(item.telefone),
+      email: stringValue(item.email),
+      endereco: stringValue(item.endereco),
+      produtos_fornecidos: stringValue(item.produtos_fornecidos),
+      observacoes: stringValue(item.observacoes),
+      criado_em: dateTimeValue(item.criado_em),
+    };
+  }
+
+  function normalizeRemoteSupply(item) {
+    return {
+      ...item,
+      nome: stringValue(item.nome),
+      categoria: stringValue(item.categoria),
+      unidade: stringValue(item.unidade || "un"),
+      custo_unitario: num(item.custo_unitario),
+      quantidade: num(item.quantidade),
+      estoque_minimo: num(item.estoque_minimo),
+    };
+  }
+
+  function normalizeRemoteRecipeItem(item) {
+    return {
+      ...item,
+      quantidade: num(item.quantidade),
+    };
+  }
+
   function normalizePermissions(value) {
     if (Array.isArray(value)) return value;
     if (typeof value === "string") {
@@ -1797,6 +1875,9 @@
   function normalizeRemoteProduct(product) {
     return {
       ...product,
+      nome: stringValue(product.nome),
+      categoria: stringValue(product.categoria),
+      observacoes: stringValue(product.observacoes),
       preco_sugerido: num(product.preco_sugerido) || num(product.preco_venda),
       preco_venda: num(product.preco_venda),
       custo_calculado: num(product.custo_calculado),
@@ -1813,6 +1894,11 @@
     const paid = num(venda.valor_pago);
     return {
       ...venda,
+      data: dateTimeValue(venda.data),
+      prazo: dateOnlyValue(venda.prazo),
+      canal: stringValue(venda.canal),
+      tipo: stringValue(venda.tipo),
+      observacoes: stringValue(venda.observacoes),
       total,
       valor_total: total,
       valor_pago: paid,
@@ -1833,6 +1919,129 @@
       preco_unitario: num(item.preco_unitario),
       subtotal: num(item.subtotal),
       desconto_item: num(item.desconto_item),
+    };
+  }
+
+  function normalizeRemoteCustomization(item) {
+    return {
+      ...item,
+      prazo: dateOnlyValue(item.prazo),
+      nome_personalizado: stringValue(item.nome_personalizado),
+      tema: stringValue(item.tema),
+      cor: stringValue(item.cor),
+      frase: stringValue(item.frase),
+      tamanho: stringValue(item.tamanho),
+      modelo: stringValue(item.modelo),
+      observacoes: stringValue(item.observacoes),
+      status_arte: stringValue(item.status_arte),
+    };
+  }
+
+  function normalizeRemoteProduction(item) {
+    return {
+      ...item,
+      prazo: dateOnlyValue(item.prazo),
+      atualizado_em: dateTimeValue(item.atualizado_em),
+      observacoes: stringValue(item.observacoes),
+      status: stringValue(item.status),
+    };
+  }
+
+  function normalizeRemoteBudget(item) {
+    return {
+      ...item,
+      data: dateOnlyValue(item.data),
+      validade: dateOnlyValue(item.validade),
+      valor: num(item.valor),
+      observacoes: stringValue(item.observacoes),
+      status: stringValue(item.status),
+    };
+  }
+
+  function normalizeRemoteSupplierEntry(item) {
+    return {
+      ...item,
+      data: dateOnlyValue(item.data),
+      quantidade: num(item.quantidade),
+      custo_unitario: num(item.custo_unitario),
+      total: num(item.total),
+      observacoes: stringValue(item.observacoes),
+    };
+  }
+
+  function normalizeRemoteStockMove(item) {
+    return {
+      ...item,
+      data: dateTimeValue(item.data),
+      quantidade: num(item.quantidade),
+      motivo: stringValue(item.motivo),
+      item_nome: stringValue(item.item_nome),
+      tipo: stringValue(item.tipo),
+    };
+  }
+
+  function normalizeRemoteFinanceItem(item) {
+    return {
+      ...item,
+      data: dateOnlyValue(item.data),
+      valor: num(item.valor),
+      descricao: stringValue(item.descricao),
+      categoria: stringValue(item.categoria),
+      status: stringValue(item.status),
+      forma: stringValue(item.forma),
+      tipo: stringValue(item.tipo),
+    };
+  }
+
+  function normalizeRemotePayment(item) {
+    return {
+      ...item,
+      data: dateOnlyValue(item.data),
+      valor: num(item.valor),
+      status: stringValue(item.status),
+      forma: stringValue(item.forma),
+    };
+  }
+
+  function normalizeRemoteLog(item) {
+    return {
+      ...item,
+      data: dateTimeValue(item.data),
+      descricao: stringValue(item.descricao),
+      tipo: stringValue(item.tipo),
+      origem: stringValue(item.origem),
+      status: stringValue(item.status),
+    };
+  }
+
+  function normalizeRemoteBackup(item) {
+    return {
+      ...item,
+      data: dateTimeValue(item.data),
+      status: stringValue(item.status),
+      nome_arquivo: stringValue(item.nome_arquivo),
+    };
+  }
+
+  function normalizeRemoteHealthCheck(item) {
+    return {
+      ...item,
+      data: dateTimeValue(item.data),
+      status: stringValue(item.status),
+      origem: stringValue(item.origem),
+      detalhe: stringValue(item.detalhe),
+    };
+  }
+
+  function normalizeRemoteStockItem(item) {
+    return {
+      ...item,
+      item_nome: stringValue(item.item_nome),
+      item_tipo: stringValue(item.item_tipo),
+      unidade: stringValue(item.unidade || "un"),
+      quantidade_total: num(item.quantidade_total),
+      quantidade_disponivel: num(item.quantidade_disponivel),
+      estoque_minimo: num(item.estoque_minimo),
     };
   }
 
@@ -1988,7 +2197,7 @@
       const bucketDays = [];
       for (let j = 0; j < bucket && i - j >= 0; j += 1) bucketDays.push(dateISO(-(i - j)));
       const total = state.db.vendas
-        .filter((venda) => bucketDays.some((day) => venda.data.startsWith(day)))
+        .filter((venda) => bucketDays.some((day) => safeStartsWith(venda.data, day)))
         .reduce((acc, venda) => acc + num(venda.total), 0);
       result.push({ label: bucket === 1 ? dateBR(bucketDays[0]).slice(0, 5) : `${dateBR(bucketDays[0]).slice(0, 5)}-${dateBR(bucketDays[bucketDays.length - 1]).slice(0, 5)}`, total });
     }
@@ -1999,9 +2208,9 @@
     return state.db.producao.filter((item) => !["Entregue", "Cancelado"].includes(item.status)).length;
   }
 
-  function dueProductionCount() {
+  function dueProductionCount(rows = state.db.producao) {
     const limit = dateISO(2);
-    return state.db.producao.filter((item) => item.prazo && item.prazo <= limit && !["Entregue", "Cancelado"].includes(item.status)).length;
+    return asArray(rows, []).filter((item) => item.prazo && item.prazo <= limit && !["Entregue", "Cancelado"].includes(item.status)).length;
   }
 
   function abcProducts() {
@@ -2135,6 +2344,66 @@
     return id ? findById(table, id) : null;
   }
 
+  function phoneField(phone = {}) {
+    const ddiOptions = ["+55", "+1", "+351", "+54", "+598"];
+    return `
+      <label>
+        Telefone/WhatsApp
+        <div class="field-row two phone-field">
+          <select name="telefone_pais">
+            ${ddiOptions.map((option) => `<option value="${option}" ${option === (phone.country || "+55") ? "selected" : ""}>${option}</option>`).join("")}
+          </select>
+          <input
+            name="telefone"
+            type="text"
+            value="${escapeHTML(phone.local || "")}"
+            placeholder="(34) 99930-1870"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="15"
+          >
+        </div>
+      </label>
+    `;
+  }
+
+  function splitPhoneValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return { country: "+55", local: "" };
+    const match = raw.match(/^(\+\d+)\s*(.*)$/);
+    if (!match) return { country: "+55", local: formatPhoneLocal(raw) };
+    return {
+      country: match[1],
+      local: formatPhoneLocal(match[2]),
+    };
+  }
+
+  function buildPhoneValue(country, local) {
+    const cleanCountry = String(country || "+55").trim() || "+55";
+    const formattedLocal = formatPhoneLocal(local);
+    if (!formattedLocal) return "";
+    const digits = digitsOnly(formattedLocal);
+    if (digits.length !== 10 && digits.length !== 11) return "";
+    return `${cleanCountry} ${formattedLocal}`;
+  }
+
+  function formatPhoneLocal(value) {
+    const digits = digitsOnly(value).slice(0, 11);
+    if (!digits) return "";
+    const ddd = digits.slice(0, 2);
+    const remaining = digits.slice(2);
+    if (digits.length <= 2) return `(${ddd}`;
+    if (remaining.length <= 4) return `(${ddd}) ${remaining}`;
+    if (digits.length <= 10) {
+      return `(${ddd}) ${remaining.slice(0, 4)}-${remaining.slice(4, 8)}`.replace(/-$/, "");
+    }
+    return `(${ddd}) ${remaining.slice(0, 5)}-${remaining.slice(5, 9)}`.replace(/-$/, "");
+  }
+
+  function digitsOnly(value) {
+    return String(value || "").replace(/\D+/g, "");
+  }
+
   function findById(table, id) {
     return state.db[table]?.find((item) => item.id === id);
   }
@@ -2216,73 +2485,6 @@
   function seedDatabase() {
     const allPerms = MODULES.map((module) => module.id);
     const karenPerms = allPerms.filter((item) => item !== "usuarios");
-    const clientes = [
-      {
-        id: "cli_01",
-        codigo: "01",
-        nome: "Cliente a vista",
-        telefone: "",
-        endereco: "",
-        origem: "Venda rapida",
-        preferencias: "",
-        observacoes: "Cliente coringa para venda rapida.",
-        aniversario: "",
-        status: "Ativo",
-        criado_em: new Date().toISOString(),
-        atualizado_em: new Date().toISOString(),
-      },
-      {
-        id: "cli_02",
-        codigo: "02",
-        nome: "Maria exemplo",
-        telefone: "(00) 90000-0000",
-        endereco: "Centro",
-        origem: "WhatsApp",
-        preferencias: "Produtos de bebe",
-        observacoes: "Cadastro exemplo para testar historico.",
-        aniversario: "",
-        status: "Ativo",
-        criado_em: dateISO(-6),
-        atualizado_em: dateISO(-6),
-      },
-    ];
-    const fornecedores = [
-      {
-        id: "for_01",
-        nome: "Fornecedor exemplo",
-        documento: "",
-        telefone: "",
-        email: "",
-        endereco: "",
-        produtos_fornecidos: "Canecas, caixas e blanks",
-        observacoes: "Registro inicial de exemplo.",
-        status: "Ativo",
-        criado_em: dateISO(-10),
-      },
-    ];
-    const insumos = [
-      { id: "ins_01", nome: "Caneca branca", categoria: "Sublimacao", unidade: "un", custo_unitario: 8.5, quantidade: 22, estoque_minimo: 10, fornecedor_id: "for_01", status: "Ativo" },
-      { id: "ins_02", nome: "Caixa para caneca", categoria: "Embalagem", unidade: "un", custo_unitario: 1.6, quantidade: 30, estoque_minimo: 15, fornecedor_id: "for_01", status: "Ativo" },
-      { id: "ins_03", nome: "Papel sublimatico", categoria: "Sublimacao", unidade: "folha", custo_unitario: 0.9, quantidade: 45, estoque_minimo: 20, fornecedor_id: "for_01", status: "Ativo" },
-      { id: "ins_04", nome: "Body liso bebe", categoria: "Vestuario", unidade: "un", custo_unitario: 18, quantidade: 12, estoque_minimo: 8, fornecedor_id: "for_01", status: "Ativo" },
-      { id: "ins_05", nome: "Manta lisa", categoria: "Vestuario", unidade: "un", custo_unitario: 25, quantidade: 6, estoque_minimo: 5, fornecedor_id: "for_01", status: "Ativo" },
-    ];
-    const produtosFinais = [
-      { id: "pro_01", nome: "Caneca personalizada", categoria: "Canecas", preco_venda: 35, custo_calculado: 11, margem: 70, estoque_minimo: 0, estoque_pronto: 0, status: "Ativo", observacoes: "" },
-      { id: "pro_02", nome: "Body de bebe personalizado", categoria: "Bebe", preco_venda: 49.9, custo_calculado: 18, margem: 70, estoque_minimo: 0, estoque_pronto: 0, status: "Ativo", observacoes: "" },
-      { id: "pro_03", nome: "Manta personalizada", categoria: "Bebe", preco_venda: 79.9, custo_calculado: 25, margem: 70, estoque_minimo: 0, estoque_pronto: 0, status: "Ativo", observacoes: "" },
-    ];
-    const fichaTecnica = [
-      { id: "fic_01", produto_id: "pro_01", insumo_id: "ins_01", quantidade: 1 },
-      { id: "fic_02", produto_id: "pro_01", insumo_id: "ins_02", quantidade: 1 },
-      { id: "fic_03", produto_id: "pro_01", insumo_id: "ins_03", quantidade: 1 },
-      { id: "fic_04", produto_id: "pro_02", insumo_id: "ins_04", quantidade: 1 },
-      { id: "fic_05", produto_id: "pro_03", insumo_id: "ins_05", quantidade: 1 },
-    ];
-    const vendas = [
-      { id: "ven_01", data: `${dateISO(-2)}T10:30:00.000Z`, cliente_id: "cli_02", tipo: "Local", canal: "WhatsApp", total: 35, desconto: 0, entrega_valor: 0, pagamento: "Pix", pagamento_status: "Pago", entrega_status: "Entregue", producao_status: "Entregue", usuario_id: "usr_allif", origem: "Exemplo", observacoes: "" },
-      { id: "ven_02", data: `${dateISO(-1)}T13:20:00.000Z`, cliente_id: "cli_01", tipo: "Ecommerce", canal: "Shopee", total: 79.9, desconto: 0, entrega_valor: 0, pagamento: "Plataforma", pagamento_status: "Pago", entrega_status: "Despachado", producao_status: "Pronto", usuario_id: "usr_karen", origem: "Exemplo", observacoes: "" },
-    ];
     return {
       configuracoes: {
         apiUrl: PROJECT_CONFIG.apiUrl,
@@ -2297,34 +2499,20 @@
         { id: "usr_allif", usuario: "allif", nome: "Allif", senha_hash: PASSWORD_HASHES.allif, perfil: "Administrador", permissoes: allPerms, status: "Ativo", criado_em: new Date().toISOString() },
         { id: "usr_karen", usuario: "karen", nome: "Karen", senha_hash: PASSWORD_HASHES.karen, perfil: "Operacional", permissoes: karenPerms, status: "Ativo", criado_em: new Date().toISOString() },
       ],
-      clientes,
-      fornecedores,
-      insumos,
-      produtosFinais,
-      fichaTecnica,
-      vendas,
-      itensVenda: [
-        { id: "itv_01", venda_id: "ven_01", produto_id: "pro_01", quantidade: 1, preco_unitario: 35, subtotal: 35 },
-        { id: "itv_02", venda_id: "ven_02", produto_id: "pro_03", quantidade: 1, preco_unitario: 79.9, subtotal: 79.9 },
-      ],
-      personalizacoes: [
-        { id: "per_01", item_venda_id: "itv_01", nome_personalizado: "Miguel", tema: "Girassol", cor: "Amarelo", frase: "", tamanho: "", modelo: "", prazo: dateISO(-1), observacoes: "", status_arte: "Aprovada" },
-      ],
-      producao: [
-        { id: "prd_01", venda_id: "ven_01", item_venda_id: "itv_01", status: "Entregue", prazo: dateISO(-1), observacoes: "", atualizado_em: dateISO(-1) },
-        { id: "prd_02", venda_id: "ven_02", item_venda_id: "itv_02", status: "Pronto", prazo: dateISO(1), observacoes: "", atualizado_em: dateISO(-1) },
-      ],
-      orcamentos: [
-        { id: "orc_01", data: `${dateISO()}T09:00:00.000Z`, cliente_id: "cli_02", produto_id: "pro_02", quantidade: 2, valor: 99.8, validade: dateISO(5), status: "Aguardando cliente", observacoes: "Exemplo de orcamento.", usuario_id: "usr_allif" },
-      ],
+      clientes: [],
+      fornecedores: [],
+      insumos: [],
+      produtosFinais: [],
+      fichaTecnica: [],
+      vendas: [],
+      itensVenda: [],
+      personalizacoes: [],
+      producao: [],
+      orcamentos: [],
       estoque: [],
       entradasFornecedor: [],
       movimentacoesEstoque: [],
-      financeiro: [
-        { id: "fin_01", tipo: "Entrada", origem_id: "ven_01", data: dateISO(-2), descricao: "Venda exemplo local", categoria: "Venda local", valor: 35, status: "Pago", forma: "Pix" },
-        { id: "fin_02", tipo: "Entrada", origem_id: "ven_02", data: dateISO(-1), descricao: "Venda exemplo ecommerce", categoria: "Venda ecommerce", valor: 79.9, status: "Pago", forma: "Plataforma" },
-        { id: "fin_03", tipo: "Saida", origem_id: "", data: dateISO(-1), descricao: "Compra de insumos exemplo", categoria: "Compra de insumos", valor: 60, status: "Pago", forma: "Pix" },
-      ],
+      financeiro: [],
       comissoes: [],
       pagamentos: [],
       backups: [],
@@ -2395,6 +2583,37 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return dateBR(value);
     return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function stringValue(value) {
+    if (value === null || value === undefined) return "";
+    return String(value);
+  }
+
+  function dateOnlyValue(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value.slice(0, 10);
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toISOString().slice(0, 10);
+  }
+
+  function dateTimeValue(value) {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+  }
+
+  function compareText(a, b) {
+    return stringValue(a).localeCompare(stringValue(b), "pt-BR");
+  }
+
+  function compareDateDesc(a, b) {
+    return stringValue(b).localeCompare(stringValue(a), "pt-BR");
+  }
+
+  function safeStartsWith(value, prefix) {
+    return String(value || "").startsWith(prefix);
   }
 
   function normalize(value) {
