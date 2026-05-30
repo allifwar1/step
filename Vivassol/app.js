@@ -58,6 +58,11 @@
       message: "Banco de dados desconectado",
       timer: null,
     },
+    sync: {
+      initialPullDone: false,
+      applyingRemote: false,
+      pushTimer: null,
+    },
   };
 
   const el = {
@@ -163,6 +168,7 @@
     renderNavigation();
     setView(state.view);
     startDatabaseMonitor();
+    syncFromSpreadsheetOnOpen();
   }
 
   function renderNavigation() {
@@ -310,7 +316,12 @@
       configuracoes: saveConfiguracoes,
     };
 
-    if (handlers[action]) handlers[action](data, form);
+    if (handlers[action]) {
+      Promise.resolve(handlers[action](data, form)).catch((error) => {
+        console.error(error);
+        toast("Nao foi possivel concluir esta acao.", "danger");
+      });
+    }
   }
 
   function renderDashboard() {
@@ -1305,16 +1316,18 @@
     renderCurrentView();
   }
 
-  function saveConfiguracoes(data) {
+  async function saveConfiguracoes(data) {
     state.db.configuracoes.apiUrl = data.apiUrl.trim();
     state.db.configuracoes.apiToken = data.apiToken.trim();
     state.db.configuracoes.spreadsheetId = data.spreadsheetId.trim();
     state.db.configuracoes.spreadsheetUrl = data.spreadsheetUrl.trim();
     state.db.configuracoes.backupSpreadsheetUrl = data.backupSpreadsheetUrl.trim();
     state.db.configuracoes.updatedAt = new Date().toISOString();
-    saveDatabase();
+    saveDatabase({ skipRemotePush: true });
     toast("Configuracoes salvas.");
+    state.sync.initialPullDone = false;
     renderApp();
+    await syncPull({ silent: true, keepView: true });
   }
 
   function convertBudget(id) {
@@ -1403,19 +1416,20 @@
     });
   }
 
-  async function syncPush() {
+  async function syncPush(options = {}) {
+    const silent = Boolean(options.silent);
     const url = state.db.configuracoes.apiUrl;
     if (!url) {
       updateDatabaseStatus("offline", "Banco de dados desconectado");
-      toast("Configure a URL do Apps Script primeiro.", "warn");
+      if (!silent) toast("Configure a URL do Apps Script primeiro.", "warn");
       return;
     }
     if (!state.db.configuracoes.apiToken) {
-      toast("Configure o TOKEN da API primeiro.", "warn");
+      if (!silent) toast("Configure o TOKEN da API primeiro.", "warn");
       return;
     }
     try {
-      updateDatabaseStatus("checking", "Enviando para o banco...");
+      updateDatabaseStatus("checking", silent ? "Sincronizando com o banco..." : "Enviando para o banco...");
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1424,40 +1438,62 @@
       const payload = await response.json();
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha ao salvar na planilha.");
       updateDatabaseStatus("online");
-      toast("Dados enviados para a planilha.");
+      if (!silent) toast("Dados enviados para a planilha.");
     } catch (error) {
       updateDatabaseStatus("offline");
-      toast("Nao foi possivel enviar para a planilha.", "danger");
+      if (!silent) toast("Nao foi possivel enviar para a planilha.", "danger");
       console.error(error);
     }
   }
 
-  async function syncPull() {
+  async function syncPull(options = {}) {
+    const silent = Boolean(options.silent);
+    const keepView = Boolean(options.keepView);
     const url = state.db.configuracoes.apiUrl;
     if (!url) {
       updateDatabaseStatus("offline", "Banco de dados desconectado");
-      toast("Configure a URL do Apps Script primeiro.", "warn");
+      if (!silent) toast("Configure a URL do Apps Script primeiro.", "warn");
       return;
     }
     if (!state.db.configuracoes.apiToken) {
-      toast("Configure o TOKEN da API primeiro.", "warn");
+      if (!silent) toast("Configure o TOKEN da API primeiro.", "warn");
       return;
     }
     try {
-      updateDatabaseStatus("checking", "Puxando do banco...");
+      updateDatabaseStatus("checking", silent ? "Atualizando dados do banco..." : "Puxando do banco...");
       const response = await fetch(`${url}?action=readAll&token=${encodeURIComponent(state.db.configuracoes.apiToken)}`);
       const payload = await response.json();
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha");
+      state.sync.applyingRemote = true;
       state.db = { ...state.db, ...normalizeRemoteDatabase(payload.data), configuracoes: state.db.configuracoes };
-      saveDatabase();
+      saveDatabase({ skipRemotePush: true });
+      state.sync.applyingRemote = false;
+      state.sync.initialPullDone = true;
       updateDatabaseStatus("online");
-      toast("Dados puxados da planilha.");
-      renderApp();
+      if (!silent) toast("Dados puxados da planilha.");
+      if (keepView) renderCurrentView();
+      else renderApp();
     } catch (error) {
+      state.sync.applyingRemote = false;
       updateDatabaseStatus("offline");
-      toast("Nao foi possivel puxar a planilha.", "danger");
+      if (!silent) toast("Nao foi possivel puxar a planilha.", "danger");
       console.error(error);
     }
+  }
+
+  function syncFromSpreadsheetOnOpen() {
+    if (state.sync.initialPullDone || !state.currentUser) return;
+    if (!state.db.configuracoes.apiUrl || !state.db.configuracoes.apiToken) return;
+    syncPull({ silent: true, keepView: true });
+  }
+
+  function queueRemotePush() {
+    if (state.sync.applyingRemote || !state.currentUser) return;
+    if (!state.db.configuracoes.apiUrl || !state.db.configuracoes.apiToken) return;
+    window.clearTimeout(state.sync.pushTimer);
+    state.sync.pushTimer = window.setTimeout(() => {
+      syncPush({ silent: true });
+    }, 900);
   }
 
   function startDatabaseMonitor() {
@@ -1931,9 +1967,10 @@
     saveDatabase();
   }
 
-  function saveDatabase() {
+  function saveDatabase(options = {}) {
     state.db.configuracoes.updatedAt = new Date().toISOString();
     writeJSON(STORAGE_KEY, state.db);
+    if (!options.skipRemotePush) queueRemotePush();
   }
 
   function loadDatabase() {
