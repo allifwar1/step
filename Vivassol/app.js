@@ -10,6 +10,14 @@
     karen: "e8026bda3ea2eedc7dc7bce9daa640f8cc0f33e335bd73d986a872b3ba789c71",
   };
 
+  const PROJECT_CONFIG = {
+    apiUrl: "https://script.google.com/macros/s/AKfycbx6cpndslxNfjCZon9mNj5iJSyjbRtcVQpj7wUefTt8HGTs-u7B9EdtRhNt3JO-LoU/exec",
+    apiToken: "viva_d7d6e4bd30c27d36b3c77a8781d9879da9bf8792cede9bf3",
+    spreadsheetId: "1NpGoMj03JFo5dCQ8Wk1LnwG6ZbegyXdN2DVjwS1EoMg",
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/1NpGoMj03JFo5dCQ8Wk1LnwG6ZbegyXdN2DVjwS1EoMg/edit",
+    backupSpreadsheetUrl: "https://docs.google.com/spreadsheets/d/1VrLAGoT2Ob27eL_iaULVYTORWjS_iwcJleaVaVUST9Y/edit",
+  };
+
   const MODULES = [
     { id: "dashboard", label: "Dashboard", title: "Painel inicial", icon: "▦" },
     { id: "vendas", label: "Vendas", title: "Vendas e nova venda", icon: "$" },
@@ -57,10 +65,13 @@
       status: "offline",
       message: "Banco de dados desconectado",
       timer: null,
+      checking: false,
     },
     sync: {
       initialPullDone: false,
       applyingRemote: false,
+      pulling: false,
+      pushing: false,
       pushTimer: null,
     },
   };
@@ -88,6 +99,7 @@
   document.addEventListener("DOMContentLoaded", init);
 
   function init() {
+    applyProjectConfig();
     document.body.dataset.theme = state.db.configuracoes.tema || "light";
     bindGlobalEvents();
     applyTrustedLogin();
@@ -106,6 +118,21 @@
     el.modalRoot.addEventListener("click", (event) => {
       if (event.target.matches("[data-close-modal], .modal-root")) closeModal();
     });
+  }
+
+  function applyProjectConfig() {
+    const externalConfig = window.VIVASSOL_CONFIG && typeof window.VIVASSOL_CONFIG === "object" ? window.VIVASSOL_CONFIG : {};
+    const config = { ...PROJECT_CONFIG, ...externalConfig };
+    const keys = ["apiUrl", "apiToken", "spreadsheetId", "spreadsheetUrl", "backupSpreadsheetUrl"];
+    let changed = false;
+    keys.forEach((key) => {
+      const value = String(config[key] || "").trim();
+      if (value && state.db.configuracoes[key] !== value) {
+        state.db.configuracoes[key] = value;
+        changed = true;
+      }
+    });
+    if (changed) saveDatabase({ skipRemotePush: true });
   }
 
   async function handleLogin(event) {
@@ -167,8 +194,8 @@
     updateDatabaseStatus(state.db.configuracoes.apiUrl ? "checking" : "offline");
     renderNavigation();
     setView(state.view);
-    startDatabaseMonitor();
     syncFromSpreadsheetOnOpen();
+    startDatabaseMonitor();
   }
 
   function renderNavigation() {
@@ -216,7 +243,8 @@
     return state.currentUser.permissoes.includes(moduleId);
   }
 
-  function renderCurrentView() {
+  function renderCurrentView(options = {}) {
+    const focusState = options.preserveFocus ? captureFocusState() : null;
     const renderers = {
       dashboard: renderDashboard,
       vendas: renderVendas,
@@ -236,16 +264,51 @@
       configuracoes: renderConfiguracoes,
     };
     el.content.innerHTML = (renderers[state.view] || renderDashboard)();
+    if (focusState) restoreFocusState(focusState);
   }
 
   function handleContentInput(event) {
     const field = event.target;
     if (field.matches("[data-filter]")) {
       state.filters[field.dataset.filter] = field.value;
-      renderCurrentView();
+      renderCurrentView({ preserveFocus: true });
     }
     if (field.matches("[data-price-live]")) {
       updateFichaPreview();
+    }
+  }
+
+  function captureFocusState() {
+    const active = document.activeElement;
+    if (!active || !el.content.contains(active)) return null;
+    const selector = focusSelector(active);
+    if (!selector) return null;
+    return {
+      selector,
+      value: "value" in active ? active.value : "",
+      start: typeof active.selectionStart === "number" ? active.selectionStart : null,
+      end: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+    };
+  }
+
+  function focusSelector(element) {
+    if (element.id) return `#${cssEscape(element.id)}`;
+    if (element.dataset.filter) return `[data-filter="${cssEscape(element.dataset.filter)}"]`;
+    if (element.name) return `[name="${cssEscape(element.name)}"]`;
+    return null;
+  }
+
+  function restoreFocusState(focusState) {
+    const next = el.content.querySelector(focusState.selector);
+    if (!next) return;
+    next.focus({ preventScroll: true });
+    if ("value" in next && next.value !== focusState.value) next.value = focusState.value;
+    if (focusState.start !== null && typeof next.setSelectionRange === "function") {
+      try {
+        next.setSelectionRange(focusState.start, focusState.end);
+      } catch {
+        // Some input types do not support cursor restoration.
+      }
     }
   }
 
@@ -291,7 +354,7 @@
     }
 
     if (button.dataset.syncPush) {
-      syncPush();
+      confirmSyncPush();
     }
   }
 
@@ -991,7 +1054,7 @@
           </div>
           ${input("apiUrl", "URL da API Apps Script", state.db.configuracoes.apiUrl || "", "url")}
           ${input("apiToken", "TOKEN da API", state.db.configuracoes.apiToken || "", "password")}
-          ${input("spreadsheetId", "ID da planilha", state.db.configuracoes.spreadsheetId || "1L1bTgw6tnfGFV42SjsRBx_BeMAr-ooKjbJcGXYDGeFA")}
+          ${input("spreadsheetId", "ID da planilha", state.db.configuracoes.spreadsheetId || PROJECT_CONFIG.spreadsheetId)}
           ${input("spreadsheetUrl", "Link da planilha principal", state.db.configuracoes.spreadsheetUrl || "", "url")}
           ${input("backupSpreadsheetUrl", "Link da planilha espelho", state.db.configuracoes.backupSpreadsheetUrl || "", "url")}
           <button class="primary-button" type="submit"><span class="btn-icon">.</span>Salvar configuracoes</button>
@@ -1416,9 +1479,50 @@
     });
   }
 
+  function confirmSyncPush() {
+    openModal(`
+      <h3>Enviar dados locais?</h3>
+      <p>Esta acao substitui a planilha pelos dados que estao neste navegador agora.</p>
+      <div class="button-row">
+        <button class="danger-button" type="button" data-confirm-sync-push="1">Enviar para a planilha</button>
+        <button class="ghost-button" type="button" data-close-modal>Cancelar</button>
+      </div>
+    `);
+    const confirmButton = el.modalRoot.querySelector("[data-confirm-sync-push]");
+    confirmButton.addEventListener("click", async () => {
+      closeModal();
+      await syncPush();
+    });
+  }
+
+  async function fetchJSONWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      const payload = await response.json();
+      return { response, payload };
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error("Tempo limite ao conversar com o banco de dados.");
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
+  function refreshCurrentUserFromDatabase() {
+    if (!state.currentUser?.id) return;
+    const freshUser = state.db.usuarios.find((item) => item.id === state.currentUser.id && item.status === "Ativo");
+    if (freshUser) state.currentUser = freshUser;
+  }
+
   async function syncPush(options = {}) {
     const silent = Boolean(options.silent);
     const url = state.db.configuracoes.apiUrl;
+    if (state.sync.pushing || state.sync.pulling) {
+      if (!silent) toast("Sincronizacao em andamento. Tente novamente em alguns segundos.", "warn");
+      return;
+    }
     if (!url) {
       updateDatabaseStatus("offline", "Banco de dados desconectado");
       if (!silent) toast("Configure a URL do Apps Script primeiro.", "warn");
@@ -1428,14 +1532,14 @@
       if (!silent) toast("Configure o TOKEN da API primeiro.", "warn");
       return;
     }
+    state.sync.pushing = true;
     try {
       updateDatabaseStatus("checking", silent ? "Sincronizando com o banco..." : "Enviando para o banco...");
-      const response = await fetch(url, {
+      const { response, payload } = await fetchJSONWithTimeout(url, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: "replaceAll", token: state.db.configuracoes.apiToken, payload: state.db }),
-      });
-      const payload = await response.json();
+      }, 20000);
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha ao salvar na planilha.");
       updateDatabaseStatus("online");
       if (!silent) toast("Dados enviados para a planilha.");
@@ -1443,13 +1547,21 @@
       updateDatabaseStatus("offline");
       if (!silent) toast("Nao foi possivel enviar para a planilha.", "danger");
       console.error(error);
+    } finally {
+      state.sync.pushing = false;
     }
   }
 
   async function syncPull(options = {}) {
     const silent = Boolean(options.silent);
     const keepView = Boolean(options.keepView);
+    const background = Boolean(options.background);
     const url = state.db.configuracoes.apiUrl;
+    if (state.sync.pulling || state.sync.pushing) {
+      if (!silent) toast("Sincronizacao em andamento. Tente novamente em alguns segundos.", "warn");
+      return;
+    }
+    if (background && hasActiveFormInput()) return;
     if (!url) {
       updateDatabaseStatus("offline", "Banco de dados desconectado");
       if (!silent) toast("Configure a URL do Apps Script primeiro.", "warn");
@@ -1459,25 +1571,28 @@
       if (!silent) toast("Configure o TOKEN da API primeiro.", "warn");
       return;
     }
+    state.sync.pulling = true;
     try {
-      updateDatabaseStatus("checking", silent ? "Atualizando dados do banco..." : "Puxando do banco...");
-      const response = await fetch(`${url}?action=readAll&token=${encodeURIComponent(state.db.configuracoes.apiToken)}`);
-      const payload = await response.json();
+      if (!background) updateDatabaseStatus("checking", silent ? "Atualizando dados do banco..." : "Puxando do banco...");
+      const { response, payload } = await fetchJSONWithTimeout(`${url}?action=readAll&token=${encodeURIComponent(state.db.configuracoes.apiToken)}`, {}, 20000);
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Falha");
       state.sync.applyingRemote = true;
       state.db = { ...state.db, ...normalizeRemoteDatabase(payload.data), configuracoes: state.db.configuracoes };
       saveDatabase({ skipRemotePush: true });
       state.sync.applyingRemote = false;
       state.sync.initialPullDone = true;
+      refreshCurrentUserFromDatabase();
       updateDatabaseStatus("online");
       if (!silent) toast("Dados puxados da planilha.");
-      if (keepView) renderCurrentView();
+      if (keepView) renderCurrentView({ preserveFocus: background });
       else renderApp();
     } catch (error) {
       state.sync.applyingRemote = false;
       updateDatabaseStatus("offline");
       if (!silent) toast("Nao foi possivel puxar a planilha.", "danger");
       console.error(error);
+    } finally {
+      state.sync.pulling = false;
     }
   }
 
@@ -1487,11 +1602,23 @@
     syncPull({ silent: true, keepView: true });
   }
 
+  function hasActiveFormInput() {
+    if (el.modalRoot.innerHTML.trim()) return true;
+    const active = document.activeElement;
+    if (!active || !el.content.contains(active) || active.matches("[data-filter]")) return false;
+    return Boolean(active.closest("form"));
+  }
+
   function queueRemotePush() {
     if (state.sync.applyingRemote || !state.currentUser) return;
+    if (!state.sync.initialPullDone) return;
     if (!state.db.configuracoes.apiUrl || !state.db.configuracoes.apiToken) return;
     window.clearTimeout(state.sync.pushTimer);
     state.sync.pushTimer = window.setTimeout(() => {
+      if (state.sync.pulling || state.sync.pushing) {
+        queueRemotePush();
+        return;
+      }
       syncPush({ silent: true });
     }, 900);
   }
@@ -1519,15 +1646,19 @@
       updateDatabaseStatus("offline", "Banco de dados desconectado");
       return;
     }
+    if (state.dbConnection.checking || state.sync.pulling || state.sync.pushing) return;
+    state.dbConnection.checking = true;
     updateDatabaseStatus("checking", "Verificando banco de dados...");
     try {
-      const response = await fetch(`${url}?action=ping&ts=${Date.now()}`, { cache: "no-store" });
-      const payload = await response.json();
+      const { response, payload } = await fetchJSONWithTimeout(`${url}?action=ping&ts=${Date.now()}`, { cache: "no-store" }, 12000);
       if (!response.ok || payload.status !== "sucesso") throw new Error(payload.message || "Banco sem resposta.");
       updateDatabaseStatus("online");
+      if (state.sync.initialPullDone) syncPull({ silent: true, keepView: true, background: true });
     } catch (error) {
       updateDatabaseStatus("offline");
       console.error(error);
+    } finally {
+      state.dbConnection.checking = false;
     }
   }
 
@@ -1697,7 +1828,7 @@
     const selectProduct = document.querySelector("[data-ficha-product]");
     if (!selectProduct) return;
     state.filters.produtoFicha = selectProduct.value;
-    renderCurrentView();
+    renderCurrentView({ preserveFocus: true });
   }
 
   function productionColumn(status) {
@@ -2057,11 +2188,11 @@
     ];
     return {
       configuracoes: {
-        apiUrl: "",
-        apiToken: "",
-        spreadsheetId: "1L1bTgw6tnfGFV42SjsRBx_BeMAr-ooKjbJcGXYDGeFA",
-        spreadsheetUrl: "",
-        backupSpreadsheetUrl: "",
+        apiUrl: PROJECT_CONFIG.apiUrl,
+        apiToken: PROJECT_CONFIG.apiToken,
+        spreadsheetId: PROJECT_CONFIG.spreadsheetId,
+        spreadsheetUrl: PROJECT_CONFIG.spreadsheetUrl,
+        backupSpreadsheetUrl: PROJECT_CONFIG.backupSpreadsheetUrl,
         tema: "light",
         updatedAt: new Date().toISOString(),
       },
@@ -2180,6 +2311,11 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function cssEscape(value) {
+    if (window.CSS?.escape) return window.CSS.escape(String(value));
+    return String(value).replace(/["\\]/g, "\\$&");
   }
 
   async function hashText(message) {
