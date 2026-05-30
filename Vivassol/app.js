@@ -240,7 +240,8 @@
     const module = MODULES.find((item) => item.id === moduleId);
     if (!module || !state.currentUser) return false;
     if (module.adminOnly && state.currentUser.usuario !== "allif") return false;
-    return state.currentUser.permissoes.includes(moduleId);
+    const permissions = normalizePermissions(state.currentUser.permissoes);
+    return permissions.includes(moduleId);
   }
 
   function renderCurrentView(options = {}) {
@@ -1682,34 +1683,60 @@
 
   function normalizeRemoteDatabase(data) {
     if (!data || typeof data !== "object") return {};
-    const produtos = (data.Produtos || data.Produtos_Finais || data.produtosFinais || state.db.produtosFinais).map(normalizeRemoteProduct);
-    const vendas = (data.Vendas || data.vendas || state.db.vendas).map(normalizeRemoteSale);
-    const itensVenda = (data.Itens_Venda || data.itensVenda || state.db.itensVenda).map(normalizeRemoteSaleItem);
+    const produtos = asArray(data.Produtos || data.Produtos_Finais || data.produtosFinais, state.db.produtosFinais).map(normalizeRemoteProduct);
+    const vendas = asArray(data.Vendas || data.vendas, state.db.vendas).map(normalizeRemoteSale);
+    const itensVenda = asArray(data.Itens_Venda || data.itensVenda, state.db.itensVenda).map(normalizeRemoteSaleItem);
     return {
-      usuarios: data.Usuarios || data.usuarios || state.db.usuarios,
-      clientes: data.Clientes || data.clientes || state.db.clientes,
-      fornecedores: data.Fornecedores || data.fornecedores || state.db.fornecedores,
-      insumos: data.Insumos || data.insumos || state.db.insumos,
+      usuarios: asArray(data.Usuarios || data.usuarios, state.db.usuarios).map(normalizeRemoteUser),
+      clientes: asArray(data.Clientes || data.clientes, state.db.clientes),
+      fornecedores: asArray(data.Fornecedores || data.fornecedores, state.db.fornecedores),
+      insumos: asArray(data.Insumos || data.insumos, state.db.insumos),
       produtosFinais: produtos,
-      fichaTecnica: data.Ficha_Tecnica || data.fichaTecnica || state.db.fichaTecnica,
+      fichaTecnica: asArray(data.Ficha_Tecnica || data.fichaTecnica, state.db.fichaTecnica),
       vendas,
       itensVenda,
-      personalizacoes: data.Personalizacoes || data.personalizacoes || state.db.personalizacoes,
-      producao: data.Producao || data.producao || state.db.producao,
-      orcamentos: data.Orcamentos || data.orcamentos || state.db.orcamentos,
-      entradasFornecedor: data.Entradas_Fornecedor || data.entradasFornecedor || state.db.entradasFornecedor,
-      movimentacoesEstoque: data.Movimentacoes_Estoque || data.movimentacoesEstoque || state.db.movimentacoesEstoque,
-      financeiro: data.Financeiro || data.financeiro || state.db.financeiro,
-      pagamentos: data.Pagamentos || data.pagamentos || state.db.pagamentos || [],
-      logsSistema: data.Logs_Sistema || data.logsSistema || state.db.logsSistema,
-      logsAgentes: data.Logs_Agentes || data.logsAgentes || state.db.logsAgentes,
-      aprovacoes: data.Aprovacoes || data.aprovacoes || state.db.aprovacoes,
-      integracoes: data.Integracoes || data.integracoes || state.db.integracoes,
-      agentes: data.Agentes || data.agentes || state.db.agentes,
-      backups: data.Backups || data.backups || state.db.backups || [],
-      healthCheck: data.Health_Check || data.healthCheck || state.db.healthCheck || [],
-      estoque: data.Estoque || data.estoque || state.db.estoque || [],
+      personalizacoes: asArray(data.Personalizacoes || data.personalizacoes, state.db.personalizacoes),
+      producao: asArray(data.Producao || data.producao, state.db.producao),
+      orcamentos: asArray(data.Orcamentos || data.orcamentos, state.db.orcamentos),
+      entradasFornecedor: asArray(data.Entradas_Fornecedor || data.entradasFornecedor, state.db.entradasFornecedor),
+      movimentacoesEstoque: asArray(data.Movimentacoes_Estoque || data.movimentacoesEstoque, state.db.movimentacoesEstoque),
+      financeiro: asArray(data.Financeiro || data.financeiro, state.db.financeiro),
+      pagamentos: asArray(data.Pagamentos || data.pagamentos, state.db.pagamentos || []),
+      logsSistema: asArray(data.Logs_Sistema || data.logsSistema, state.db.logsSistema),
+      logsAgentes: asArray(data.Logs_Agentes || data.logsAgentes, state.db.logsAgentes),
+      aprovacoes: asArray(data.Aprovacoes || data.aprovacoes, state.db.aprovacoes),
+      integracoes: asArray(data.Integracoes || data.integracoes, state.db.integracoes),
+      agentes: asArray(data.Agentes || data.agentes, state.db.agentes),
+      backups: asArray(data.Backups || data.backups, state.db.backups || []),
+      healthCheck: asArray(data.Health_Check || data.healthCheck, state.db.healthCheck || []),
+      estoque: asArray(data.Estoque || data.estoque, state.db.estoque || []),
     };
+  }
+
+  function asArray(value, fallback = []) {
+    return Array.isArray(value) ? value : fallback;
+  }
+
+  function normalizeRemoteUser(user) {
+    return {
+      ...user,
+      usuario: normalize(user.usuario),
+      nome: user.nome || user.usuario || "Usuario",
+      senha_hash: user.senha_hash || PASSWORD_HASHES[normalize(user.usuario)] || "",
+      permissoes: normalizePermissions(user.permissoes),
+      status: user.status || "Ativo",
+    };
+  }
+
+  function normalizePermissions(value) {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      return value
+        .split(/[,\n;]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
   }
 
   function normalizeRemoteProduct(product) {
@@ -2105,15 +2132,30 @@
   }
 
   function loadDatabase() {
-    const existing = readJSON(STORAGE_KEY, null);
-    if (existing) return mergeDatabase(seedDatabase(), existing);
     const fresh = seedDatabase();
-    writeJSON(STORAGE_KEY, fresh);
-    return fresh;
+    const existing = readJSON(STORAGE_KEY, null);
+    const database = sanitizeDatabase(existing ? mergeDatabase(fresh, existing) : fresh, fresh);
+    writeJSON(STORAGE_KEY, database);
+    return database;
   }
 
   function mergeDatabase(base, existing) {
     return { ...base, ...existing, configuracoes: { ...base.configuracoes, ...existing.configuracoes } };
+  }
+
+  function sanitizeDatabase(database, fallback) {
+    const arrayKeys = [
+      "usuarios", "clientes", "fornecedores", "insumos", "produtosFinais", "fichaTecnica", "vendas", "itensVenda",
+      "personalizacoes", "producao", "orcamentos", "estoque", "entradasFornecedor", "movimentacoesEstoque",
+      "financeiro", "comissoes", "pagamentos", "backups", "healthCheck", "logsSistema", "logsAgentes",
+      "aprovacoes", "integracoes", "agentes",
+    ];
+    arrayKeys.forEach((key) => {
+      database[key] = asArray(database[key], fallback[key] || []);
+    });
+    database.usuarios = database.usuarios.map(normalizeRemoteUser);
+    database.configuracoes = { ...fallback.configuracoes, ...(database.configuracoes || {}) };
+    return database;
   }
 
   function seedDatabase() {
