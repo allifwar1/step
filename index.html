@@ -1139,6 +1139,21 @@
       cursor: default;
     }
 
+    /* a coluna de texto pode encolher — impede que e-mail/textos longos
+       alarguem o cartão e estourem a tela no celular */
+    .contato-item>div:last-child {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contato-item p {
+      overflow-wrap: anywhere;
+    }
+
+    .contato-wrap>* {
+      min-width: 0;
+    }
+
     .contato-item:hover {
       transform: translateX(6px);
       box-shadow: 0 8px 30px rgba(244, 121, 32, .15);
@@ -1779,7 +1794,7 @@
           <div class="contato-icon">📧</div>
           <div>
             <h4>E-mail</h4>
-            <p>contato@stepagronegocios.com.br</p>
+            <p>contato@<wbr>stepagronegocios.com.br</p>
           </div>
         </div>
         <div class="contato-item">
