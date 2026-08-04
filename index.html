@@ -940,6 +940,18 @@
       overflow: hidden;
       -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
       mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+      cursor: grab;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .clientes-faixa.arrastando {
+      cursor: grabbing;
+    }
+
+    .clientes-faixa+.clientes-faixa .clientes-track {
+      padding-top: 0;
     }
 
     .clientes-track {
@@ -948,11 +960,7 @@
       gap: 26px;
       width: max-content;
       padding: 10px 0 22px;
-      animation: slide-faixa 55s linear infinite;
-    }
-
-    .clientes-faixa:hover .clientes-track {
-      animation-play-state: paused;
+      will-change: transform;
     }
 
     .cliente-logo {
@@ -978,6 +986,8 @@
       width: auto;
       max-width: 180px;
       object-fit: contain;
+      pointer-events: none;
+      -webkit-user-drag: none;
     }
 
     /* logos quadrados (Bayer, GDM, LG, Stoller, ABC) ganham mais altura
@@ -988,7 +998,6 @@
 
     @media (prefers-reduced-motion: reduce) {
 
-      .clientes-track,
       .faixa-inner,
       .wpp-float,
       .scroll-hint {
@@ -1682,7 +1691,7 @@
     <span class="linha-deco reveal" style="margin-bottom:12px"></span>
     <p class="sub-secao reveal">Atendemos os maiores players do mercado de pesquisa agrícola do Brasil.</p>
 
-    <div class="clientes-faixa reveal">
+    <div class="clientes-faixa reveal" data-dir="1">
       <div class="clientes-track">
         <div class="cliente-logo quadrado"><img src="img/clientes/bayer.webp" alt="Bayer" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/basf.webp" alt="BASF" loading="lazy" decoding="async"></div>
@@ -1693,14 +1702,6 @@
         <div class="cliente-logo"><img src="img/clientes/stine.webp" alt="Stine" loading="lazy" decoding="async"></div>
         <div class="cliente-logo quadrado"><img src="img/clientes/lg.webp" alt="LG Sementes" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/tmg.webp" alt="TMG" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/longping.webp" alt="Longping High-Tech" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/shull.webp" alt="Shull" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/latitude.webp" alt="Latitude Genética de Sementes" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/sempre.webp" alt="Sempre Sementes" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo quadrado"><img src="img/clientes/stoller.webp" alt="Stoller" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo quadrado"><img src="img/clientes/fundacao-abc.webp" alt="Fundação ABC" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/seedcorp-ho.webp" alt="Seedcorp|HO" loading="lazy" decoding="async"></div>
-        <div class="cliente-logo"><img src="img/clientes/kaiima.webp" alt="Kaiima" loading="lazy" decoding="async"></div>
         <div class="cliente-logo quadrado"><img src="img/clientes/bayer.webp" alt="Bayer" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/basf.webp" alt="BASF" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/corteva.webp" alt="Corteva Agriscience" loading="lazy" decoding="async"></div>
@@ -1710,6 +1711,18 @@
         <div class="cliente-logo"><img src="img/clientes/stine.webp" alt="Stine" loading="lazy" decoding="async"></div>
         <div class="cliente-logo quadrado"><img src="img/clientes/lg.webp" alt="LG Sementes" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/tmg.webp" alt="TMG" loading="lazy" decoding="async"></div>
+      </div>
+    </div>
+    <div class="clientes-faixa reveal" data-dir="-1">
+      <div class="clientes-track">
+        <div class="cliente-logo"><img src="img/clientes/longping.webp" alt="Longping High-Tech" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/shull.webp" alt="Shull" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/latitude.webp" alt="Latitude Genética de Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/sempre.webp" alt="Sempre Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo quadrado"><img src="img/clientes/stoller.webp" alt="Stoller" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo quadrado"><img src="img/clientes/fundacao-abc.webp" alt="Fundação ABC" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/seedcorp-ho.webp" alt="Seedcorp|HO" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/kaiima.webp" alt="Kaiima" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/longping.webp" alt="Longping High-Tech" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/shull.webp" alt="Shull" loading="lazy" decoding="async"></div>
         <div class="cliente-logo"><img src="img/clientes/latitude.webp" alt="Latitude Genética de Sementes" loading="lazy" decoding="async"></div>
@@ -1951,6 +1964,76 @@
     }, { threshold: 0.12 });
 
     document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+    /* ── Carrossel de clientes: 2 fileiras, sentidos opostos, arraste com inércia ── */
+    document.querySelectorAll('.clientes-faixa').forEach(faixa => {
+      const track = faixa.querySelector('.clientes-track');
+      const dir = parseFloat(faixa.dataset.dir || '1');
+      const reduzMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const VEL_BASE = reduzMotion ? 0 : dir * -42;   // px/s do giro automático
+      let x = 0, vel = VEL_BASE, periodo = 0;
+      let arrastando = false, hover = false;
+      let ultimoX = 0, ultimoT = 0, velArraste = 0;
+
+      function medir() {
+        const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+        periodo = (track.scrollWidth + gap) / 2;
+      }
+      medir();
+      window.addEventListener('resize', medir);
+      window.addEventListener('load', medir);
+
+      faixa.addEventListener('pointerdown', e => {
+        arrastando = true;
+        velArraste = 0;
+        ultimoX = e.clientX;
+        ultimoT = performance.now();
+        faixa.classList.add('arrastando');
+        faixa.setPointerCapture(e.pointerId);
+      });
+
+      faixa.addEventListener('pointermove', e => {
+        if (!arrastando) return;
+        const agora = performance.now();
+        const dx = e.clientX - ultimoX;
+        const dt = Math.max(1, agora - ultimoT);
+        x += dx;
+        velArraste = velArraste * 0.75 + (dx / dt * 1000) * 0.25;
+        ultimoX = e.clientX;
+        ultimoT = agora;
+      });
+
+      function soltar() {
+        if (!arrastando) return;
+        arrastando = false;
+        faixa.classList.remove('arrastando');
+        // lança com a velocidade do gesto (inércia), limitada para ficar elegante
+        vel = Math.max(-2200, Math.min(2200, velArraste));
+      }
+      faixa.addEventListener('pointerup', soltar);
+      faixa.addEventListener('pointercancel', soltar);
+
+      faixa.addEventListener('mouseenter', () => hover = true);
+      faixa.addEventListener('mouseleave', () => hover = false);
+
+      let anterior = performance.now();
+      function quadro(agora) {
+        const dt = Math.min(50, agora - anterior);
+        anterior = agora;
+        if (!arrastando) {
+          const alvo = hover ? 0 : VEL_BASE;
+          // desaceleração suave da inércia até voltar ao giro automático
+          vel = alvo + (vel - alvo) * Math.exp(-dt / 800);
+          x += vel * dt / 1000;
+        }
+        if (periodo > 0) {
+          x = ((x % periodo) - periodo) % periodo;   // loop infinito nos 2 sentidos
+        }
+        track.style.transform = `translate3d(${x}px,0,0)`;
+        requestAnimationFrame(quadro);
+      }
+      requestAnimationFrame(quadro);
+    });
 
     /* ── Formulário → WhatsApp ── */
     function enviarForm(e) {
