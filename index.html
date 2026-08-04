@@ -4,7 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="STEP Agronegócios — fornecimento de insumos e sementes multimarcas para estações de pesquisa agrícola em todo o Brasil. Sediada em Uberlândia, MG.">
+  <meta name="theme-color" content="#0b2e14">
+  <link rel="icon" type="image/png" href="img/favicon.png">
   <link rel="preload" as="image" href="img/slide1.webp">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <title>STEP Agronegócios – Soluções Tecnológicas para Estações de Pesquisa</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Poppins:wght@300;400;500;600;700&display=swap"
@@ -1498,7 +1504,8 @@
           <strong>STEP</strong>
           Soluções Tecnológicas para Estações de Pesquisa
         </div>
-        <img src="img/logo_fundo_branco.jpeg" alt="STEP Agronegócios no campo" class="sobre-img">
+        <img src="img/logo_fundo_branco.jpeg" alt="STEP Agronegócios no campo" class="sobre-img" loading="lazy"
+          decoding="async">
         <div class="sobre-badge">
           <strong>12+</strong>
           <span>Anos de experiência</span>
@@ -1575,7 +1582,7 @@
       <a href="https://wa.me/553496462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
         class="btn-outline btn-whatsapp" target="_blank" rel="noopener">
 
-        <img src="img/Wpp_logo.png" alt="WhatsApp">
+        <img src="img/Wpp_logo.png" alt="WhatsApp" loading="lazy" decoding="async">
 
         <span>Falar no WhatsApp</span>
 
@@ -1664,7 +1671,14 @@
       document.getElementById('home').style.height = window.innerHeight + 'px';
     }
     ajustarAltura();
-    window.addEventListener('resize', ajustarAltura);
+    // No mobile, a barra do navegador dispara "resize" ao rolar; só reajusta se a largura mudar
+    let larguraAnterior = window.innerWidth;
+    window.addEventListener('resize', () => {
+      if (window.innerWidth !== larguraAnterior) {
+        larguraAnterior = window.innerWidth;
+        ajustarAltura();
+      }
+    });
 
     /* ── Header scroll ── */
     const header = document.getElementById('header');
@@ -1794,10 +1808,11 @@
       e.preventDefault();
       const f = e.target;
       const nome = f.nome.value.trim();
+      const email = f.email.value.trim();
       const msg = f.msg.value.trim();
       const emp = f.empresa.value.trim();
       const texto = encodeURIComponent(
-        `Olá! Sou ${nome}${emp ? ' da ' + emp : ''}.\n\n${msg}`
+        `Olá! Sou ${nome}${emp ? ' da ' + emp : ''}.\n\n${msg}\n\nE-mail para contato: ${email}`
       );
       window.open(`https://wa.me/553496462561?text=${texto}`, '_blank');
     }
