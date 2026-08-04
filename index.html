@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description"
-    content="STEP Agronegócios — fornecimento de insumos e sementes multimarcas para estações de pesquisa agrícola em todo o Brasil. Sediada em Uberlândia, MG.">
+    content="STEP Agronegócios — insumos e sementes multimarcas, fracionamento, contagem e montagem de ensaios, plantio e colheita para estações de pesquisa agrícola em todo o Brasil. Uberlândia, MG.">
   <meta name="theme-color" content="#0b2e14">
   <link rel="icon" type="image/png" href="img/favicon.png">
   <link rel="preload" as="image" href="img/slide1.webp">
@@ -568,9 +568,9 @@
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 20px;
-      max-width: 1800px;
+      max-width: 1340px;
       margin: 0 auto;
     }
 
@@ -749,8 +749,9 @@
     }
 
     .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 24px;
       max-width: 1200px;
       margin: 0 auto;
@@ -768,6 +769,8 @@
       flex-direction: column;
       gap: 14px;
       cursor: default;
+      flex: 1 1 300px;
+      max-width: 374px;
     }
 
     .card::before {
@@ -919,6 +922,72 @@
       font-size: 1.4rem;
       color: var(--laranja-claro);
       z-index: 2;
+    }
+
+    /* ═══════════════════════════════════════════
+   CLIENTES
+═══════════════════════════════════════════ */
+    #clientes {
+      padding: 100px 0 110px;
+      background: var(--creme);
+      overflow: hidden;
+    }
+
+    .clientes-faixa {
+      position: relative;
+      max-width: 1400px;
+      margin: 0 auto;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    }
+
+    .clientes-track {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      width: max-content;
+      padding: 10px 0 22px;
+      animation: slide-faixa 55s linear infinite;
+    }
+
+    .clientes-faixa:hover .clientes-track {
+      animation-play-state: paused;
+    }
+
+    .cliente-logo {
+      background: var(--branco);
+      border-radius: 14px;
+      padding: 14px 26px;
+      height: 96px;
+      min-width: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .06);
+      transition: transform var(--t), box-shadow var(--t);
+    }
+
+    .cliente-logo:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(244, 121, 32, .15);
+    }
+
+    .cliente-logo img {
+      height: 54px;
+      width: auto;
+      max-width: 180px;
+      object-fit: contain;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .clientes-track,
+      .faixa-inner,
+      .wpp-float,
+      .scroll-hint {
+        animation: none;
+      }
     }
 
     /* ═══════════════════════════════════════════
@@ -1221,10 +1290,6 @@
    RESPONSIVO
 ═══════════════════════════════════════════ */
     @media (max-width:1024px) {
-      .cards-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -1317,12 +1382,24 @@
         padding: 20px 16px;
       }
 
-      .cards-grid {
-        grid-template-columns: 1fr;
+      .card {
+        flex-basis: 100%;
+        max-width: 420px;
       }
 
       .stats-grid {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .cliente-logo {
+        height: 80px;
+        padding: 12px 20px;
+        min-width: 130px;
+      }
+
+      .cliente-logo img {
+        height: 44px;
+        max-width: 150px;
       }
 
       .stat-num {
@@ -1357,6 +1434,7 @@
       <a href="#sobre">Quem Somos</a>
       <a href="#servicos">Soluções</a>
       <a href="#como-funciona">Como Funciona</a>
+      <a href="#clientes">Clientes</a>
       <a href="#contato">Contato</a>
     </nav>
     <div class="menu-toggle" id="menuToggle">
@@ -1370,6 +1448,7 @@
     <a href="#sobre" onclick="fecharMenu()">🌿 Quem Somos</a>
     <a href="#servicos" onclick="fecharMenu()">🌾 Soluções</a>
     <a href="#como-funciona" onclick="fecharMenu()">⚙️ Como Funciona</a>
+    <a href="#clientes" onclick="fecharMenu()">🤝 Clientes</a>
     <a href="#contato" onclick="fecharMenu()">📱 Contato</a>
   </nav>
 
@@ -1379,35 +1458,44 @@
       <div class="slide-overlay"></div>
       <div class="slide-content">
         <div class="slide-badge">Soluções Tecnológicas para Estações de Pesquisa</div>
-        <h1>Insumos e Sementes para <span>Pesquisa Agrícola</span></h1>
-        <p>Eficiência, agilidade e qualidade em cada entrega para todo o Brasil.</p>
+        <h1>Sua <span>parceira ideal</span> para estações de pesquisa</h1>
+        <p>Da semente ao resultado — tudo que sua pesquisa precisa.</p>
         <a href="#contato" class="btn-laranja">Falar com especialista →</a>
       </div>
     </div>
     <div class="slide" style="background-image:url('img/slide2.webp')">
       <div class="slide-overlay"></div>
       <div class="slide-content">
-        <div class="slide-badge">Atendimento Nacional</div>
-        <h1>Levamos <span>resultados</span> para todo o Brasil</h1>
-        <p>De Uberlândia ao país inteiro — sua pesquisa em boas mãos.</p>
+        <div class="slide-badge">Fornecimento Multimarcas</div>
+        <h1>Insumos e Sementes para <span>Ensaios de Pesquisa Agrícola</span></h1>
+        <p>Eficiência, agilidade e qualidade em cada entrega para todo o Brasil.</p>
         <a href="#servicos" class="btn-laranja">Nossas Soluções →</a>
-      </div>
-    </div>
-    <div class="slide" style="background-image:url('img/slide3.webp')">
-      <div class="slide-overlay"></div>
-      <div class="slide-content">
-        <div class="slide-badge">Experiência e Credibilidade</div>
-        <h1>Mais de <span>12 anos</span> de Experiência no Agronegócio</h1>
-        <p>Conhecimento sólido em pesquisa, sementes e insumos agrícolas.</p>
-        <a href="#sobre" class="btn-laranja">Conheça a STEP →</a>
       </div>
     </div>
     <div class="slide" style="background-image:url('img/slide4.webp')">
       <div class="slide-overlay"></div>
       <div class="slide-content">
-        <div class="slide-badge">Parceira de Pesquisa</div>
-        <h1>Sua <span>parceira ideal</span> para estações de pesquisa</h1>
-        <p>Da semente ao resultado — tudo que sua pesquisa precisa.</p>
+        <div class="slide-badge">Precisão em Cada Etapa</div>
+        <h1><span>Fracionamento, contagem e montagem</span> de ensaios para plantio</h1>
+        <p>Kits preparados na quantidade exata, conforme o protocolo de cada ensaio.</p>
+        <a href="#como-funciona" class="btn-laranja">Como Funciona →</a>
+      </div>
+    </div>
+    <div class="slide" style="background-image:url('img/slide3.webp')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <div class="slide-badge">Solução Completa</div>
+        <h1>Processo <span>End-to-End</span> — fornecimento, operação, plantio e colheita</h1>
+        <p>Cuidamos de todas as etapas do seu ensaio, do início ao fim.</p>
+        <a href="#sobre" class="btn-laranja">Conheça a STEP →</a>
+      </div>
+    </div>
+    <div class="slide" style="background-image:url('img/slide5.webp')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <div class="slide-badge">Todas as Culturas</div>
+        <h1><span>Soja, Milho, Sorgo, Trigo, Canola, Girassol</span> e vários outros</h1>
+        <p>Sementes das principais culturas e de todas as marcas do mercado para o seu programa de pesquisa.</p>
         <a href="#contato" class="btn-laranja">Entre em Contato →</a>
       </div>
     </div>
@@ -1444,29 +1532,20 @@
   <div class="stats-section">
     <div class="stats-grid">
       <div class="stat-card reveal zoom-in">
-        <div class="stat-num">12+</div>
-        <div class="stat-label">Anos de experiência no setor agrícola</div>
+        <div class="stat-num">10+</div>
+        <div class="stat-label">Anos de experiência em ensaios agrícolas</div>
       </div>
-      <div class="stat-card reveal zoom-in" style="transition-delay:0.5s">
+      <div class="stat-card reveal zoom-in" style="transition-delay:0.4s">
         <div class="stat-num">100%</div>
         <div class="stat-label">Cobertura nacional de atendimento</div>
       </div>
-      <div class="stat-card reveal zoom-in" style="transition-delay:1.0s">
+      <div class="stat-card reveal zoom-in" style="transition-delay:0.8s">
         <div class="stat-num">1ª</div>
-        <div class="stat-label">Prioridade total na qualidade dos seus resultados</div>
+        <div class="stat-label">Empresa atendendo 100% da área de pesquisa no Brasil</div>
       </div>
-      <div class="stat-card reveal zoom-in" style="transition-delay:1.5s">
-        <div class="stat-num">500+</div>
-        <div class="stat-label">Clientes atendidos em todo Brasil</div>
-      </div>
-      <div class="stat-card reveal zoom-in" style="transition-delay:2.0s">
-        <div class="stat-num">∞</div>
-        <div class="stat-label">Compromisso com resultados</div>
-      </div>
-      <div class="stat-card reveal zoom-in" style="transition-delay:2.5s">
-        <div class="stat-num">100%</div>
-        <div class="stat-label">Das Marcas disponíveis no mercado</div>
-
+      <div class="stat-card reveal zoom-in" style="transition-delay:1.2s">
+        <div class="stat-num">★</div>
+        <div class="stat-label">Atendemos os maiores players do mercado</div>
       </div>
     </div>
   </div>
@@ -1479,7 +1558,9 @@
         <span class="linha-deco" style="margin:14px 0 28px;"></span>
         <p>
           A <strong>STEP Agronegócios</strong> — <em>Soluções Tecnológicas para Estações de Pesquisa</em> —
-          atua no fornecimento de insumos e sementes para empresas de pesquisa agrícola em todo o Brasil.
+          atua no fornecimento de insumos e sementes para empresas de pesquisa agrícola em todo o Brasil,
+          além da prestação de serviço de <strong>separação, contagem e montagem de kits</strong> conforme
+          protocolos solicitados e ainda <strong>plantio e colheita</strong>.
         </p>
         <p>
           Sediada em <strong>Uberlândia, MG</strong>, com atendimento nacional, trabalhamos com
@@ -1487,8 +1568,13 @@
           exatamente o que precisa para gerar dados de qualidade.
         </p>
         <p>
-          Fornecemos tudo: sementes de diversas marcas, insumos e todos os materiais necessários para
-          que sua pesquisa alcance resultados confiáveis.
+          Valorizamos a qualidade, <strong>germinação e vigor garantidos por análise laboratorial
+            interna</strong>, além das informações originais dos obtentores.
+        </p>
+        <p>
+          Sabemos da importância da agilidade, assertividade e qualidade das sementes para geração de
+          dados e posicionamento comercial adequado, portanto visamos seguir os protocolos e demandas
+          com a <strong>maior confiabilidade possível</strong>!
         </p>
         <div class="sobre-destaques">
           <div class="dest-item"><span class="dest-icon">🌾</span> Sementes multimarcas — todas as marcas do mercado
@@ -1507,7 +1593,7 @@
         <img src="img/logo_fundo_branco.jpeg" alt="STEP Agronegócios no campo" class="sobre-img" loading="lazy"
           decoding="async">
         <div class="sobre-badge">
-          <strong>12+</strong>
+          <strong>10+</strong>
           <span>Anos de experiência</span>
         </div>
       </div>
@@ -1521,25 +1607,32 @@
     <p class="sub-secao reveal">Tudo que sua pesquisa agrícola precisa, com agilidade e qualidade.</p>
 
     <div class="cards-grid">
-      <div class="card reveal zoom-in" style="transition-delay:.5s">
+      <div class="card reveal zoom-in" style="transition-delay:.25s">
         <div class="card-icon">🌾</div>
         <h3>Sementes Multimarcas</h3>
         <p>Fornecimento nacional com todas as marcas do mercado. Variedades para cada tipo de experimento agrícola.</p>
         <span class="card-link">Saiba mais ›</span>
       </div>
-      <div class="card reveal zoom-in" style="transition-delay:1.0s">
+      <div class="card reveal zoom-in" style="transition-delay:.5s">
         <div class="card-icon">🧪</div>
         <h3>Insumos de Pesquisa</h3>
         <p>Todos os materiais necessários para experimentos com padrão de qualidade e rastreabilidade.</p>
         <span class="card-link">Saiba mais ›</span>
       </div>
-      <div class="card reveal zoom-in" style="transition-delay:1.5s">
+      <div class="card reveal zoom-in" style="transition-delay:.75s">
+        <div class="card-icon">📦</div>
+        <h3>Preparo dos Kits para Plantio</h3>
+        <p>Precisão na quantidade de sementes por população desejada e preparo adequado para o plantio, conforme o
+          protocolo de cada ensaio.</p>
+        <span class="card-link">Saiba mais ›</span>
+      </div>
+      <div class="card reveal zoom-in" style="transition-delay:1.0s">
         <div class="card-icon">🚚</div>
         <h3>Logística Especializada</h3>
         <p>Entrega organizada e pontual para atender as demandas experimentais nos prazos críticos.</p>
         <span class="card-link">Saiba mais ›</span>
       </div>
-      <div class="card reveal zoom-in" style="transition-delay:2.0s">
+      <div class="card reveal zoom-in" style="transition-delay:1.25s">
         <div class="card-icon">🤝</div>
         <h3>Atendimento Personalizado</h3>
         <p>Cada projeto recebe solução sob medida, com suporte do pedido à entrega com total atenção.</p>
@@ -1573,13 +1666,59 @@
     </div>
   </section>
 
+  <!-- CLIENTES -->
+  <section id="clientes">
+    <h2 class="titulo-secao reveal">Alguns Clientes</h2>
+    <span class="linha-deco reveal" style="margin-bottom:12px"></span>
+    <p class="sub-secao reveal">Atendemos os maiores players do mercado de pesquisa agrícola do Brasil.</p>
+
+    <div class="clientes-faixa reveal">
+      <div class="clientes-track">
+        <div class="cliente-logo"><img src="img/clientes/bayer.webp" alt="Bayer" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/basf.webp" alt="BASF" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/corteva.webp" alt="Corteva Agriscience" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/syngenta.webp" alt="Syngenta" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/gdm.webp" alt="GDM" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/advanta.webp" alt="Advanta" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/stine.webp" alt="Stine" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/lg.webp" alt="LG Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/tmg.webp" alt="TMG" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/longping.webp" alt="Longping High-Tech" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/shull.webp" alt="Shull" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/latitude.webp" alt="Latitude Genética de Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/sempre.webp" alt="Sempre Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/stoller.webp" alt="Stoller" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/fundacao-abc.webp" alt="Fundação ABC" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/seedcorp-ho.webp" alt="Seedcorp|HO" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/kaiima.webp" alt="Kaiima" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/bayer.webp" alt="Bayer" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/basf.webp" alt="BASF" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/corteva.webp" alt="Corteva Agriscience" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/syngenta.webp" alt="Syngenta" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/gdm.webp" alt="GDM" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/advanta.webp" alt="Advanta" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/stine.webp" alt="Stine" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/lg.webp" alt="LG Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/tmg.webp" alt="TMG" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/longping.webp" alt="Longping High-Tech" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/shull.webp" alt="Shull" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/latitude.webp" alt="Latitude Genética de Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/sempre.webp" alt="Sempre Sementes" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/stoller.webp" alt="Stoller" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/fundacao-abc.webp" alt="Fundação ABC" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/seedcorp-ho.webp" alt="Seedcorp|HO" loading="lazy" decoding="async"></div>
+        <div class="cliente-logo"><img src="img/clientes/kaiima.webp" alt="Kaiima" loading="lazy" decoding="async"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA -->
   <div class="cta-section">
     <h2 class="reveal">Pronto para elevar sua <span>pesquisa agrícola</span>?</h2>
     <p class="reveal">Entre em contato agora e descubra como a STEP pode ser a parceira ideal para o seu projeto.</p>
     <div class="cta-btns reveal">
       <a href="#contato" class="btn-laranja"> Falar com especialista</a>
-      <a href="https://wa.me/553496462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
+      <a href="https://wa.me/5534996462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
         class="btn-outline btn-whatsapp" target="_blank" rel="noopener">
 
         <img src="img/Wpp_logo.png" alt="WhatsApp" loading="lazy" decoding="async">
@@ -1610,14 +1749,14 @@
           <div class="contato-icon">📱</div>
           <div>
             <h4>WhatsApp</h4>
-            <p>(34) 9646-2561</p>
+            <p>(34) 99646-2561</p>
           </div>
         </div>
         <div class="contato-item">
           <div class="contato-icon">📧</div>
           <div>
             <h4>E-mail</h4>
-            <p>contato@stepagronegocios.com</p>
+            <p>contato@stepagronegocios.com.br</p>
           </div>
         </div>
         <div class="contato-item">
@@ -1627,7 +1766,7 @@
             <p>Segunda a sexta · 8h às 18h</p>
           </div>
         </div>
-        <a href="https://wa.me/553496462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
+        <a href="https://wa.me/5534996462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
           class="btn-whats" target="_blank" rel="noopener">
           <span>💬</span> Chamar no WhatsApp agora
         </a>
@@ -1658,7 +1797,7 @@
   <!-- WhatsApp flutuante -->
 
   <a class="wpp-float"
-    href="https://wa.me/553496462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
+    href="https://wa.me/5534996462561?text=Olá!%20Gostaria%20de%20mais%20informações%20sobre%20as%20soluções%20da%20STEP%20Agronegócios."
     target="_blank" rel="noopener" aria-label="WhatsApp STEP">
 
     <img src="img/Wpp_logo.png" alt="WhatsApp">
@@ -1814,7 +1953,7 @@
       const texto = encodeURIComponent(
         `Olá! Sou ${nome}${emp ? ' da ' + emp : ''}.\n\n${msg}\n\nE-mail para contato: ${email}`
       );
-      window.open(`https://wa.me/553496462561?text=${texto}`, '_blank');
+      window.open(`https://wa.me/5534996462561?text=${texto}`, '_blank');
     }
     document.querySelectorAll('.btn-laranja').forEach(btn => {
       btn.addEventListener('mouseenter', pausarSlider);
